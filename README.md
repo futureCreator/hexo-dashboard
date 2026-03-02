@@ -4,9 +4,15 @@ A local dashboard for managing Hexo blog posts — built with Next.js 15, TypeSc
 
 ## Features
 
-- Browse posts and drafts from your Hexo blog
+- Browse published posts and drafts from your Hexo blog
+- Create new posts with title, date, tags, and categories
+- Edit post content and front matter directly in the browser
 - Delete posts with a confirmation modal
-- Deploy your blog with a single click
+- Open posts in your local editor (e.g. VS Code)
+- Commit changes to git with a built-in staging UI
+- Deploy your blog with a single click (`hexo deploy`)
+- Live file-watching via SSE — post list updates automatically when files change
+- Dark / Light / System theme with no flash on load
 - Configure your Hexo project path via the Settings page
 
 ## Tech Stack
@@ -36,4 +42,8 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 |--------|-------|-------------|
 | GET/POST | `/api/settings` | Read and write dashboard settings |
 | GET/DELETE | `/api/posts` | List and delete posts |
+| GET | `/api/posts/content` | Read raw post file content |
 | POST | `/api/deploy` | Run `hexo deploy` |
+| POST | `/api/git/commit` | Stage and commit changes via git |
+| POST | `/api/open` | Open a file in the local editor |
+| GET | `/api/watch` | SSE stream for file-system changes |
