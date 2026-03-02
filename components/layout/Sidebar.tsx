@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 const navItems = [
   {
@@ -52,6 +53,7 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <aside className="w-60 shrink-0 h-screen sticky top-0 flex flex-col border-r border-[var(--border)] bg-[var(--card)]">
@@ -119,7 +121,39 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-[var(--border)]">
+      <div className="px-6 py-4 border-t border-[var(--border)] space-y-2">
+        <div className="flex items-center gap-2">
+          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--muted)]">
+            /
+          </kbd>
+          <span className="text-xs text-[var(--muted-foreground)]">Search</span>
+          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--muted)] ml-2">
+            d
+          </kbd>
+          <span className="text-xs text-[var(--muted-foreground)]">Deploy</span>
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="ml-auto p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-all duration-200"
+            aria-label="Toggle theme"
+          >
+            {resolvedTheme === "dark" ? (
+              // Sun icon
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71M17.66 17.66l.71.71M6.34 6.34l.71.71M12 8a4 4 0 100 8 4 4 0 000-8z"
+                />
+              </svg>
+            ) : (
+              // Moon icon
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
         <p className="text-xs text-[var(--muted-foreground)] font-mono">
           v0.1.0
         </p>

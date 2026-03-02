@@ -29,7 +29,7 @@ export default function Card({
     return (
       <div
         className={`
-          rounded-xl bg-[var(--foreground)] text-white p-6 relative overflow-hidden
+          rounded-xl bg-[var(--stat-card)] text-white p-6 relative overflow-hidden
           ${hover ? "transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" : ""}
           ${className}
         `}

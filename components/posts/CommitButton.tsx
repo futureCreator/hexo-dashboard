@@ -3,22 +3,21 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type DeployStatus = "idle" | "loading" | "success" | "error";
+type CommitStatus = "idle" | "loading" | "success" | "error";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
-export default function DeployButton() {
-  const [status, setStatus] = useState<DeployStatus>("idle");
-  const [output, setOutput] = useState<string>("");
+export default function CommitButton() {
+  const [status, setStatus] = useState<CommitStatus>("idle");
+  const [output, setOutput] = useState("");
   const [showLog, setShowLog] = useState(false);
 
-  async function handleDeploy() {
+  async function handleCommit() {
     setStatus("loading");
-    setOutput("");
     setShowLog(false);
 
     try {
-      const res = await fetch("/api/deploy", { method: "POST" });
+      const res = await fetch("/api/git/commit", { method: "POST" });
       const data = await res.json();
 
       if (data.success) {
@@ -29,7 +28,7 @@ export default function DeployButton() {
       setOutput(data.output || data.error || "");
     } catch {
       setStatus("error");
-      setOutput("Network error: Failed to reach deploy API.");
+      setOutput("Network error: Failed to reach git commit API.");
     }
   }
 
@@ -39,78 +38,53 @@ export default function DeployButton() {
     setShowLog(false);
   }
 
-  const isLoading = status === "loading";
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "d" && e.key !== "D") return;
+      if (e.key !== "c" && e.key !== "C") return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (isLoading) return;
-      handleDeploy();
+      if (status !== "idle") return;
+      handleCommit();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+  }, [status]);
+
+  const isLoading = status === "loading";
 
   return (
     <div className="flex flex-col items-end gap-3">
-      {/* Deploy button */}
+      {/* Commit & Push button */}
       <button
-        onClick={handleDeploy}
+        onClick={handleCommit}
         disabled={isLoading}
         className={`
           flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
-          transition-all duration-200 cursor-pointer select-none
+          transition-all duration-200 cursor-pointer select-none border
           ${
             isLoading
-              ? "bg-[rgba(0,82,255,0.08)] text-[var(--accent)] border border-[rgba(0,82,255,0.2)] cursor-not-allowed"
-              : "bg-gradient-to-r from-[var(--accent)] to-[#4D7CFF] text-white shadow-sm hover:shadow-[0_4px_14px_rgba(0,82,255,0.25)] hover:-translate-y-0.5"
+              ? "bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)] cursor-not-allowed"
+              : "bg-[var(--card)] text-[var(--foreground)] border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
           }
         `}
       >
         {isLoading ? (
           <>
-            <svg
-              className="w-4 h-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Deploying…
+            Pushing…
           </>
         ) : (
           <>
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            Deploy
-            <kbd className="ml-1 text-[10px] font-mono px-1 py-0.5 rounded border border-white/30 text-white/70 bg-white/10">
-              d
+            Commit & Push
+            <kbd className="ml-1 text-[10px] font-mono px-1 py-0.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--muted)]">
+              c
             </kbd>
           </>
         )}
@@ -127,15 +101,10 @@ export default function DeployButton() {
             transition={{ duration: 0.2, ease: easeOut }}
             className={`
               w-80 rounded-xl border p-4 shadow-lg
-              ${
-                status === "success"
-                  ? "bg-emerald-50 border-emerald-200"
-                  : "bg-red-50 border-red-200"
-              }
+              ${status === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}
             `}
           >
             <div className="flex items-start gap-3">
-              {/* Icon */}
               <div
                 className={`
                   flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5
@@ -153,26 +122,16 @@ export default function DeployButton() {
                 )}
               </div>
 
-              {/* Content */}
               <div className="flex-1 min-w-0">
-                <p
-                  className={`text-sm font-semibold ${
-                    status === "success" ? "text-emerald-800" : "text-red-800"
-                  }`}
-                >
-                  {status === "success" ? "Deployed" : "Deploy Failed"}
+                <p className={`text-sm font-semibold ${status === "success" ? "text-emerald-800" : "text-red-800"}`}>
+                  {status === "success" ? "Committed & Pushed" : "Failed"}
                 </p>
-                <p
-                  className={`text-xs mt-0.5 ${
-                    status === "success" ? "text-emerald-600" : "text-red-600"
-                  }`}
-                >
+                <p className={`text-xs mt-0.5 ${status === "success" ? "text-emerald-600" : "text-red-600"}`}>
                   {status === "success"
-                    ? "Build & deploy succeeded"
+                    ? "Changes committed and pushed to remote"
                     : "An error occurred. Check the log."}
                 </p>
 
-                {/* Log toggle */}
                 {output && (
                   <button
                     onClick={() => setShowLog((v) => !v)}
@@ -197,11 +156,7 @@ export default function DeployButton() {
                         mt-2 text-[10px] font-mono leading-relaxed
                         max-h-48 overflow-y-auto whitespace-pre-wrap break-all
                         rounded-lg p-2.5
-                        ${
-                          status === "success"
-                            ? "bg-emerald-100 text-emerald-900"
-                            : "bg-red-100 text-red-900"
-                        }
+                        ${status === "success" ? "bg-emerald-100 text-emerald-900" : "bg-red-100 text-red-900"}
                       `}
                     >
                       {output}
@@ -210,7 +165,6 @@ export default function DeployButton() {
                 </AnimatePresence>
               </div>
 
-              {/* Dismiss */}
               <button
                 onClick={handleDismiss}
                 className={`

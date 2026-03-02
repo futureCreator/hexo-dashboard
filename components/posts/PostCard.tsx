@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import EditModal from "./EditModal";
+import { useToast } from "@/components/ui/Toast";
 import type { HexoPost } from "@/lib/hexo";
 
 interface PostCardProps {
   post: HexoPost;
   onDeleted: (filepath: string) => void;
+  onUpdated: (post: HexoPost, oldFilepath?: string) => void;
   index?: number;
 }
 
@@ -24,19 +27,30 @@ const fadeInUp = {
   }),
 };
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "No date";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-export default function PostCard({ post, onDeleted, index = 0 }: PostCardProps) {
+export default function PostCard({
+  post,
+  onDeleted,
+  onUpdated,
+  index = 0,
+}: PostCardProps) {
+  const { showToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+  const [formattedDate, setFormattedDate] = useState<string>("No date");
+
+  useEffect(() => {
+    if (!post.date) return;
+    const d = new Date(post.date);
+    setFormattedDate(
+      d.toLocaleDateString(navigator.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    );
+  }, [post.date]);
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -48,13 +62,39 @@ export default function PostCard({ post, onDeleted, index = 0 }: PostCardProps) 
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || "Failed to delete post");
+        showToast({ type: "error", message: data.error || "Failed to delete post" });
         return;
       }
       onDeleted(post.filepath);
     } finally {
       setIsDeleting(false);
       setModalOpen(false);
+    }
+  }
+
+  async function handleToggle() {
+    setIsToggling(true);
+    const oldFilepath = post.filepath;
+    try {
+      const res = await fetch("/api/posts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filepath: oldFilepath }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast({ type: "error", message: data.error || "Failed to toggle draft status" });
+        return;
+      }
+      onUpdated(data.post, oldFilepath);
+      showToast({
+        type: "success",
+        message: data.post.draft
+          ? `Moved "${post.title}" to Drafts`
+          : `Published "${post.title}"`,
+      });
+    } finally {
+      setIsToggling(false);
     }
   }
 
@@ -85,7 +125,7 @@ export default function PostCard({ post, onDeleted, index = 0 }: PostCardProps) 
             </span>
             <span className="text-[var(--border)] text-xs">·</span>
             <span className="text-xs text-[var(--muted-foreground)]">
-              {formatDate(post.date)}
+              {formattedDate}
             </span>
             {post.categories.map((cat) => (
               <Badge key={cat} variant="category">
@@ -100,8 +140,85 @@ export default function PostCard({ post, onDeleted, index = 0 }: PostCardProps) 
           </div>
         </div>
 
-        {/* Delete button */}
-        <div className="shrink-0 pt-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        {/* Action buttons — visible on hover */}
+        <div className="shrink-0 pt-0.5 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          {/* Open */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEditModalOpen(true)}
+            title="Edit file"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
+            </svg>
+            Edit
+          </Button>
+
+          {/* Toggle Draft/Published */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggle}
+            disabled={isToggling}
+            title={post.draft ? "Publish post" : "Move to drafts"}
+          >
+            {post.draft ? (
+              <>
+                {/* Eye icon: publish (make visible) */}
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+                Publish
+              </>
+            ) : (
+              <>
+                {/* Eye-off icon: move to draft (hide) */}
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                  />
+                </svg>
+                Draft
+              </>
+            )}
+          </Button>
+
+          {/* Delete */}
           <Button
             variant="danger"
             size="sm"
@@ -131,6 +248,14 @@ export default function PostCard({ post, onDeleted, index = 0 }: PostCardProps) 
         onConfirm={handleDelete}
         onCancel={() => setModalOpen(false)}
         isDeleting={isDeleting}
+      />
+
+      <EditModal
+        isOpen={editModalOpen}
+        filepath={post.filepath}
+        filename={post.filename}
+        onClose={() => setEditModalOpen(false)}
+        onSaved={() => showToast({ type: "success", message: `"${post.title}" saved` })}
       />
     </>
   );

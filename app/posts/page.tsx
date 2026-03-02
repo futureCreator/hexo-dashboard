@@ -4,6 +4,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import SectionLabel from "@/components/ui/SectionLabel";
 import PostList from "@/components/posts/PostList";
 import DeployButton from "@/components/posts/DeployButton";
+import CommitButton from "@/components/posts/CommitButton";
+import { PostListSkeleton } from "@/components/ui/Skeleton";
 import { loadSettings } from "@/lib/settings";
 import { readPosts, hexoPathValid } from "@/lib/hexo";
 
@@ -37,7 +39,12 @@ export default async function PostsPage() {
               Manage and organize all your Hexo blog posts in one place.
             </p>
           </div>
-          {configured && valid && <DeployButton />}
+          {configured && valid && (
+            <div className="flex items-start gap-2">
+              <CommitButton />
+              <DeployButton />
+            </div>
+          )}
         </div>
 
         {/* Not configured */}
@@ -88,22 +95,57 @@ export default async function PostsPage() {
 
         {/* Invalid path */}
         {configured && !valid && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
-            <p className="text-sm text-red-700 mb-4">
-              The configured Hexo path is no longer valid. Please update your settings.
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-red-100 border border-red-200 flex items-center justify-center mx-auto mb-5">
+              <svg
+                className="w-7 h-7 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-red-800 mb-2">
+              Invalid Hexo path
+            </h2>
+            <p className="text-sm text-red-600 mb-6 max-w-sm mx-auto">
+              The configured path no longer exists or is missing a{" "}
+              <code className="font-mono text-xs bg-red-100 px-1.5 py-0.5 rounded">
+                source/_posts
+              </code>{" "}
+              folder. Please update your settings.
             </p>
             <Link
               href="/settings"
-              className="text-sm text-red-700 underline hover:no-underline"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium shadow-sm hover:bg-red-700 hover:-translate-y-0.5 transition-all duration-200"
             >
-              Update Settings →
+              Update Settings
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
             </Link>
           </div>
         )}
 
         {/* Posts list */}
         {configured && valid && (
-          <Suspense fallback={<div className="text-[var(--muted-foreground)] text-sm">Loading posts...</div>}>
+          <Suspense fallback={<PostListSkeleton />}>
             <PostList initialPosts={posts} />
           </Suspense>
         )}
