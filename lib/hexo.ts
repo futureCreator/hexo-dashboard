@@ -155,6 +155,100 @@ export function createPost(hexoPath: string, options: CreatePostOptions): HexoPo
   return parsePost(filepath, filename, draft);
 }
 
+export interface HexoPage {
+  filename: string;   // "index.md"
+  filepath: string;   // absolute path
+  title: string;      // front matter title or slug
+  slug: string;       // directory name (e.g. "about")
+  date: string | null;
+  excerpt: string;
+}
+
+export function getPagesSourceDir(hexoPath: string): string {
+  return path.join(hexoPath, "source");
+}
+
+export function readPages(hexoPath: string): HexoPage[] {
+  const sourceDir = getPagesSourceDir(hexoPath);
+  if (!fs.existsSync(sourceDir)) return [];
+
+  const pages: HexoPage[] = [];
+
+  const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith("_")) continue;
+
+    if (entry.isDirectory()) {
+      const indexPath = path.join(sourceDir, entry.name, "index.md");
+      if (fs.existsSync(indexPath)) {
+        pages.push(parsePage(indexPath, "index.md", entry.name));
+      }
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith(".md") &&
+      entry.name !== "index.md"
+    ) {
+      const slug = entry.name.replace(/\.md$/, "");
+      pages.push(parsePage(path.join(sourceDir, entry.name), entry.name, slug));
+    }
+  }
+
+  return pages.sort((a, b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+}
+
+function parsePage(filepath: string, filename: string, slug: string): HexoPage {
+  try {
+    const raw = fs.readFileSync(filepath, "utf-8");
+    const { data, excerpt } = matter(raw, { excerpt: true });
+    const date = data.date ? new Date(data.date).toISOString() : null;
+    return {
+      filename,
+      filepath,
+      title: data.title || slug,
+      slug,
+      date,
+      excerpt: excerpt || "",
+    };
+  } catch {
+    return { filename, filepath, title: slug, slug, date: null, excerpt: "" };
+  }
+}
+
+export function deletePage(filepath: string): void {
+  if (!fs.existsSync(filepath)) return;
+  fs.unlinkSync(filepath);
+
+  // Remove parent directory if it only contained index.md
+  const dir = path.dirname(filepath);
+  if (path.basename(filepath) === "index.md") {
+    const remaining = fs.readdirSync(dir);
+    if (remaining.length === 0) {
+      fs.rmdirSync(dir);
+    }
+  }
+}
+
+export interface CreatePageOptions {
+  title: string;
+  slug: string;
+}
+
+export function createPage(hexoPath: string, options: CreatePageOptions): HexoPage {
+  const { title, slug } = options;
+  const sourceDir = getPagesSourceDir(hexoPath);
+  const pageDir = path.join(sourceDir, slug);
+  if (!fs.existsSync(pageDir)) fs.mkdirSync(pageDir, { recursive: true });
+
+  const filepath = path.join(pageDir, "index.md");
+  const frontMatter: Record<string, unknown> = { title, date: new Date().toISOString() };
+  fs.writeFileSync(filepath, matter.stringify("", frontMatter), "utf-8");
+  return parsePage(filepath, "index.md", slug);
+}
+
 export function togglePostDraft(filepath: string, hexoPath: string): HexoPost {
   const postsDir = getPostsDir(hexoPath);
   const draftsDir = getDraftsDir(hexoPath);

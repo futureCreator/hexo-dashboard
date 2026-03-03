@@ -11,6 +11,7 @@ interface EditModalProps {
   filename: string;
   onClose: () => void;
   onSaved: () => void;
+  contentApiBase?: string;
 }
 
 export default function EditModal({
@@ -19,6 +20,7 @@ export default function EditModal({
   filename,
   onClose,
   onSaved,
+  contentApiBase = "/api/posts/content",
 }: EditModalProps) {
   const [mounted, setMounted] = useState(false);
   const [content, setContent] = useState("");
@@ -38,7 +40,7 @@ export default function EditModal({
 
     setIsLoading(true);
     setError(null);
-    fetch(`/api/posts/content?filepath=${encodeURIComponent(filepath)}`)
+    fetch(`${contentApiBase}?filepath=${encodeURIComponent(filepath)}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
@@ -63,7 +65,7 @@ export default function EditModal({
     setIsSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/posts/content", {
+      const res = await fetch(contentApiBase, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filepath, content }),

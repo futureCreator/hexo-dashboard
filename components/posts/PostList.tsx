@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import EditModal from "./EditModal";
 import NewPostModal from "./NewPostModal";
+import ContributionHeatmap from "./ContributionHeatmap";
 import type { HexoPost } from "@/lib/hexo";
 
 type FilterType = "all" | "published" | "draft";
@@ -176,6 +177,9 @@ export default function PostList({ initialPosts }: PostListProps) {
           </div>
         ))}
       </motion.div>
+
+      {/* Contribution heatmap */}
+      <ContributionHeatmap posts={posts} />
 
       {/* Search + Date filter */}
       <motion.div

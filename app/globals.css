@@ -16,6 +16,11 @@
   --card: #FFFFFF;
   --ring: #0052FF;
   --stat-card: #0F172A;
+  --heatmap-0: rgba(0, 82, 255, 0.06);
+  --heatmap-1: rgba(0, 82, 255, 0.18);
+  --heatmap-2: rgba(0, 82, 255, 0.38);
+  --heatmap-3: rgba(0, 82, 255, 0.62);
+  --heatmap-4: rgba(0, 82, 255, 0.88);
 }
 
 @theme inline {
@@ -49,6 +54,11 @@
   --card: #0a0a0c;
   --ring: #5E6AD2;
   --stat-card: #1c1c24;
+  --heatmap-0: rgba(94, 106, 210, 0.08);
+  --heatmap-1: rgba(94, 106, 210, 0.22);
+  --heatmap-2: rgba(94, 106, 210, 0.42);
+  --heatmap-3: rgba(94, 106, 210, 0.65);
+  --heatmap-4: rgba(94, 106, 210, 0.90);
 }
 
 .dark .shadow-accent {
@@ -100,3 +110,11 @@ body {
 .shadow-accent-lg {
   box-shadow: 0 8px 24px rgba(0, 82, 255, 0.35);
 }
+
+/* Contribution Heatmap */
+.heatmap-cell[data-level="0"] { background-color: var(--heatmap-0); }
+.heatmap-cell[data-level="1"] { background-color: var(--heatmap-1); }
+.heatmap-cell[data-level="2"] { background-color: var(--heatmap-2); }
+.heatmap-cell[data-level="3"] { background-color: var(--heatmap-3); }
+.heatmap-cell[data-level="4"] { background-color: var(--heatmap-4); }
+.heatmap-cell-empty           { background-color: transparent; }

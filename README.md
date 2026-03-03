@@ -1,17 +1,19 @@
 # Hexo Dashboard
 
-A local dashboard for managing Hexo blog posts — built with Next.js 15, TypeScript, and Tailwind CSS v4.
+A local dashboard for managing Hexo blog posts and pages — built with Next.js 15, TypeScript, and Tailwind CSS v4.
 
 ## Features
 
 - Browse published posts and drafts from your Hexo blog
+- Manage static pages (About, Contact, etc.) from a dedicated Pages view
 - Create new posts with title, date, tags, and categories
-- Edit post content and front matter directly in the browser
-- Delete posts with a confirmation modal
+- Edit post and page content and front matter directly in the browser
+- Delete posts and pages with a confirmation modal
 - Open posts in your local editor (e.g. VS Code)
 - Commit changes to git with a built-in staging UI
 - Deploy your blog with a single click (`hexo deploy`)
 - Live file-watching via SSE — post list updates automatically when files change
+- Contribution heatmap — visualize your post activity at a glance
 - Dark / Light / System theme with no flash on load
 - Configure your Hexo project path via the Settings page
 
@@ -41,9 +43,21 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 | Method | Route | Description |
 |--------|-------|-------------|
 | GET/POST | `/api/settings` | Read and write dashboard settings |
-| GET/DELETE | `/api/posts` | List and delete posts |
-| GET | `/api/posts/content` | Read raw post file content |
+| GET/DELETE/POST | `/api/posts` | List, delete, and create posts |
+| GET/PUT | `/api/posts/content` | Read and write post file content |
+| GET/DELETE/POST | `/api/pages` | List, delete, and create static pages |
+| GET/PUT | `/api/pages/content` | Read and write page file content |
 | POST | `/api/deploy` | Run `hexo deploy` |
 | POST | `/api/git/commit` | Stage and commit changes via git |
 | POST | `/api/open` | Open a file in the local editor |
 | GET | `/api/watch` | SSE stream for file-system changes |
+
+## Changelog
+
+### v0.1.1
+- Added **Pages** management — create, edit, and delete static Hexo pages (`source/<slug>/index.md`)
+- Added **Contribution Heatmap** — GitHub-style activity heatmap on the Posts page
+- `EditModal` now accepts a `contentApiBase` prop so it can be reused for both posts and pages
+
+### v0.1.0
+- Initial release: post browsing, editing, dark mode, git commit UI, deploy button, file watcher
