@@ -16,6 +16,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [hexoPath, setHexoPath] = useState("");
+  const [gaPropertyId, setGaPropertyId] = useState("");
+  const [gaServiceAccountPath, setGaServiceAccountPath] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,8 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.hexoPath) setHexoPath(data.hexoPath);
+        if (data.gaPropertyId) setGaPropertyId(data.gaPropertyId);
+        if (data.gaServiceAccountPath) setGaServiceAccountPath(data.gaServiceAccountPath);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -40,7 +44,11 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hexoPath: hexoPath.trim() }),
+        body: JSON.stringify({
+          hexoPath: hexoPath.trim(),
+          gaPropertyId: gaPropertyId.trim(),
+          gaServiceAccountPath: gaServiceAccountPath.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -221,6 +229,65 @@ export default function SettingsPage() {
                 )}
               </Button>
             </form>
+          </Card>
+        </motion.div>
+
+        {/* Google Analytics card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: easeOut, delay: 0.15 }}
+        >
+          <Card className="mt-6 p-8">
+            <h2 className="text-sm font-semibold text-[var(--foreground)] mb-1">
+              Google Analytics
+            </h2>
+            <p className="text-xs text-[var(--muted-foreground)] mb-5">
+              Connect your GA4 property to view analytics on the{" "}
+              <Link href="/analytics" className="text-[var(--accent)] hover:underline">Analytics page</Link>.{" "}
+              Property ID는 <code className="font-mono bg-[var(--muted)] px-1.5 py-0.5 rounded text-[0.7rem]">G-XXXXXXXXXX</code>가 아닌 관리 → 속성 설정의 숫자 ID입니다.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="gaPropertyId"
+                  className="block text-sm font-medium text-[var(--foreground)] mb-2"
+                >
+                  GA4 Property ID
+                </label>
+                <input
+                  id="gaPropertyId"
+                  type="text"
+                  value={gaPropertyId}
+                  onChange={(e) => setGaPropertyId(e.target.value)}
+                  placeholder="123456789 (numeric Property ID)"
+                  disabled={loading}
+                  className="w-full h-12 px-4 rounded-xl border border-[var(--border)] bg-transparent text-[var(--foreground)] text-sm font-mono placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:border-transparent transition-all duration-200 disabled:opacity-60"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="gaServiceAccountPath"
+                  className="block text-sm font-medium text-[var(--foreground)] mb-2"
+                >
+                  Service Account JSON Path
+                </label>
+                <input
+                  id="gaServiceAccountPath"
+                  type="text"
+                  value={gaServiceAccountPath}
+                  onChange={(e) => setGaServiceAccountPath(e.target.value)}
+                  placeholder="/path/to/service-account.json"
+                  disabled={loading}
+                  className="w-full h-12 px-4 rounded-xl border border-[var(--border)] bg-transparent text-[var(--foreground)] text-sm font-mono placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:border-transparent transition-all duration-200 disabled:opacity-60"
+                />
+                <p className="text-xs text-[var(--muted-foreground)] mt-2">
+                  Create a service account in Google Cloud Console, grant it the{" "}
+                  <code className="font-mono bg-[var(--muted)] px-1.5 py-0.5 rounded text-[0.7rem]">Viewer</code>{" "}
+                  role on your GA4 property, then download the JSON key.
+                </p>
+              </div>
+            </div>
           </Card>
         </motion.div>
 

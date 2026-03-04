@@ -28,8 +28,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    saveSettings({ hexoPath });
-    return NextResponse.json({ success: true, hexoPath });
+    const gaPropertyId = String(body.gaPropertyId || "").trim() || undefined;
+    const gaServiceAccountPath = String(body.gaServiceAccountPath || "").trim() || undefined;
+
+    saveSettings({ hexoPath, gaPropertyId, gaServiceAccountPath });
+    return NextResponse.json({ success: true, hexoPath, gaPropertyId, gaServiceAccountPath });
   } catch (err) {
     return NextResponse.json(
       { error: String(err) },

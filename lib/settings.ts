@@ -6,6 +6,8 @@ const CONFIG_PATH = path.join(os.homedir(), ".hexo-dashboard-config.json");
 
 export interface Settings {
   hexoPath: string;
+  gaPropertyId?: string;
+  gaServiceAccountPath?: string;
 }
 
 export function loadSettings(): Settings {
