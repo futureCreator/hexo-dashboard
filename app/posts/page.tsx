@@ -24,14 +24,14 @@ export default async function PostsPage() {
 
   return (
     <DashboardLayout>
-      <div className="px-8 py-10 max-w-6xl">
+      <div className="px-4 py-6 sm:px-8 sm:py-10 max-w-6xl">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
           <div>
             <SectionLabel pulse className="mb-4">
               Posts
             </SectionLabel>
-            <h1 className="font-display text-4xl text-[var(--foreground)] leading-tight mb-2">
+            <h1 className="font-display text-3xl sm:text-4xl text-[var(--foreground)] leading-tight mb-2">
               Your{" "}
               <span className="gradient-text">Blog Posts</span>
             </h1>
@@ -40,7 +40,7 @@ export default async function PostsPage() {
             </p>
           </div>
           {configured && valid && (
-            <div className="flex items-start gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <CommitButton />
               <DeployButton />
             </div>

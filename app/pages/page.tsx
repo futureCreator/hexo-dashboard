@@ -22,14 +22,14 @@ export default async function PagesPage() {
 
   return (
     <DashboardLayout>
-      <div className="px-8 py-10 max-w-6xl">
+      <div className="px-4 py-6 sm:px-8 sm:py-10 max-w-6xl">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="mb-8">
           <div>
             <SectionLabel pulse className="mb-4">
               Pages
             </SectionLabel>
-            <h1 className="font-display text-4xl text-[var(--foreground)] leading-tight mb-2">
+            <h1 className="font-display text-3xl sm:text-4xl text-[var(--foreground)] leading-tight mb-2">
               Static{" "}
               <span className="gradient-text">Pages</span>
             </h1>

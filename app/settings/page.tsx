@@ -56,7 +56,7 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="px-8 py-10 max-w-2xl">
+      <div className="px-4 py-6 sm:px-8 sm:py-10 max-w-2xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -65,7 +65,7 @@ export default function SettingsPage() {
           className="mb-8"
         >
           <SectionLabel className="mb-4">Settings</SectionLabel>
-          <h1 className="font-display text-4xl text-[var(--foreground)] leading-tight mb-2">
+          <h1 className="font-display text-3xl sm:text-4xl text-[var(--foreground)] leading-tight mb-2">
             Configure{" "}
             <span className="gradient-text">Your Blog</span>
           </h1>
@@ -237,7 +237,7 @@ export default function SettingsPage() {
             <p className="text-xs text-[var(--muted-foreground)] mb-5">
               Choose how Hexo Dashboard looks for you.
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {(
                 [
                   {
