@@ -32,11 +32,53 @@ export function useToast() {
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
+const TOAST_GAP = 12;
+const TOAST_OFFSET_BASE = 16;
+const TOAST_HEIGHT = 64;
+
+const toastStyles = {
+  success: {
+    container: "bg-emerald-50 border-emerald-200",
+    icon: "bg-emerald-500",
+    text: "text-emerald-800",
+  },
+  error: {
+    container: "bg-red-50 border-red-200",
+    icon: "bg-red-500",
+    text: "text-red-800",
+  },
+  info: {
+    container: "bg-blue-50 border-blue-200",
+    icon: "bg-blue-500",
+    text: "text-blue-800",
+  },
+} as const;
+
+const icons = {
+  success: (
+    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+    </svg>
+  ),
+  error: (
+    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  ),
+  info: (
+    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+};
+
 function ToastItem({
   toast,
+  index,
   onDismiss,
 }: {
   toast: Toast;
+  index: number;
   onDismiss: (id: string) => void;
 }) {
   useEffect(() => {
@@ -44,101 +86,34 @@ function ToastItem({
     return () => clearTimeout(timer);
   }, [toast.id, onDismiss]);
 
-  const styles = {
-    success: {
-      container: "bg-emerald-50 border-emerald-200",
-      icon: "bg-emerald-500",
-      text: "text-emerald-800",
-    },
-    error: {
-      container: "bg-red-50 border-red-200",
-      icon: "bg-red-500",
-      text: "text-red-800",
-    },
-    info: {
-      container: "bg-blue-50 border-blue-200",
-      icon: "bg-blue-500",
-      text: "text-blue-800",
-    },
-  }[toast.type];
+  const style = toastStyles[toast.type];
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, x: 40, scale: 0.95 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 40, scale: 0.95 }}
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0, bottom: TOAST_OFFSET_BASE + index * (TOAST_HEIGHT + TOAST_GAP) }}
+      exit={{ opacity: 0, x: 40 }}
       transition={{ duration: 0.25, ease: easeOut }}
-      className={`flex items-start gap-3 p-4 rounded-xl border shadow-lg w-72 ${styles.container}`}
+      style={{
+        position: "fixed",
+        right: 16,
+        bottom: TOAST_OFFSET_BASE + index * (TOAST_HEIGHT + TOAST_GAP),
+        zIndex: 50,
+      }}
+      className={`flex items-start gap-3 p-4 rounded-xl border shadow-lg w-72 pointer-events-auto ${style.container}`}
     >
-      <div
-        className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${styles.icon}`}
-      >
-        {toast.type === "success" && (
-          <svg
-            className="w-3.5 h-3.5 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        )}
-        {toast.type === "error" && (
-          <svg
-            className="w-3.5 h-3.5 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        )}
-        {toast.type === "info" && (
-          <svg
-            className="w-3.5 h-3.5 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        )}
+      <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${style.icon}`}>
+        {icons[toast.type]}
       </div>
-      <p className={`text-sm flex-1 leading-snug ${styles.text}`}>
+      <p className={`text-sm flex-1 leading-snug ${style.text}`}>
         {toast.message}
       </p>
       <button
         onClick={() => onDismiss(toast.id)}
-        className={`shrink-0 opacity-50 hover:opacity-100 transition-opacity cursor-pointer ${styles.text}`}
+        className={`shrink-0 opacity-50 hover:opacity-100 transition-opacity cursor-pointer ${style.text}`}
       >
-        <svg
-          className="w-3.5 h-3.5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2.5}
-            d="M6 18L18 6M6 6l12 12"
-          />
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </motion.div>
@@ -170,15 +145,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {mounted &&
         createPortal(
-          <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-            <AnimatePresence mode="popLayout">
-              {toasts.map((toast) => (
-                <div key={toast.id} className="pointer-events-auto">
-                  <ToastItem toast={toast} onDismiss={dismiss} />
-                </div>
-              ))}
-            </AnimatePresence>
-          </div>,
+          <AnimatePresence>
+            {toasts.map((toast, index) => (
+              <ToastItem
+                key={toast.id}
+                toast={toast}
+                index={index}
+                onDismiss={dismiss}
+              />
+            ))}
+          </AnimatePresence>,
           document.body
         )}
     </ToastContext.Provider>
