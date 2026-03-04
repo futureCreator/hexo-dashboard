@@ -133,7 +133,7 @@ export default function PostList({ initialPosts }: PostListProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: easeOut }}
-        className="grid grid-cols-3 gap-4 mb-8"
+        className="grid grid-cols-3 gap-3 sm:gap-4 mb-8"
       >
         {[
           { label: "Total Posts", value: posts.length, accent: null },
@@ -142,7 +142,7 @@ export default function PostList({ initialPosts }: PostListProps) {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="bg-[var(--stat-card)] rounded-xl p-5 relative overflow-hidden"
+            className="bg-[var(--stat-card)] rounded-xl p-3 sm:p-5 relative overflow-hidden"
           >
             <div
               className="absolute inset-0 opacity-[0.03]"
@@ -160,7 +160,7 @@ export default function PostList({ initialPosts }: PostListProps) {
             )}
             <div className="relative">
               <div
-                className={`text-3xl font-bold mb-1 ${
+                className={`text-2xl sm:text-3xl font-bold mb-1 ${
                   stat.accent === "emerald"
                     ? "text-emerald-400"
                     : stat.accent === "amber"
@@ -186,7 +186,7 @@ export default function PostList({ initialPosts }: PostListProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.05 }}
-        className="mb-4 flex gap-2"
+        className="mb-4 flex flex-col sm:flex-row gap-2"
       >
         <div className="relative flex-1">
           <svg
@@ -238,7 +238,7 @@ export default function PostList({ initialPosts }: PostListProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="flex items-center gap-2 mb-6"
+        className="flex flex-wrap items-center gap-2 mb-6"
       >
         {filterBtns.map(({ key, label, count }) => (
           <button
