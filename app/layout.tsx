@@ -28,6 +28,14 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Hexo Dashboard",
   description: "Manage your Hexo blog posts with ease",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Hexo Dashboard",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
