@@ -70,12 +70,24 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
 
   return (
-    <aside className="w-60 shrink-0 h-screen sticky top-0 flex flex-col border-r border-[var(--border)] bg-[var(--card)]">
+    <aside
+      className={`
+        w-60 shrink-0 h-screen flex flex-col border-r border-[var(--border)] bg-[var(--card)]
+        fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+        md:sticky md:top-0 md:translate-x-0 md:z-auto
+      `}
+    >
       {/* Logo */}
       <div className="px-6 py-5 border-b border-[var(--border)]">
         <div className="flex items-center gap-3">
@@ -94,7 +106,7 @@ export default function Sidebar() {
               />
             </svg>
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm text-[var(--foreground)] leading-tight">
               Hexo Dashboard
             </div>
@@ -102,6 +114,16 @@ export default function Sidebar() {
               Blog Manager
             </div>
           </div>
+          {/* Close button — mobile only */}
+          <button
+            onClick={onClose}
+            className="md:hidden p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-all duration-200"
+            aria-label="Close navigation"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -113,6 +135,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`
                 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                 transition-all duration-200
@@ -157,14 +180,12 @@ export default function Sidebar() {
             aria-label="Toggle theme"
           >
             {resolvedTheme === "dark" ? (
-              // Sun icon
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71M17.66 17.66l.71.71M6.34 6.34l.71.71M12 8a4 4 0 100 8 4 4 0 000-8z"
                 />
               </svg>
             ) : (
-              // Moon icon
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
