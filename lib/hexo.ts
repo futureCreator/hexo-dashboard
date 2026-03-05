@@ -11,6 +11,29 @@ export interface HexoPost {
   categories: string[];
   draft: boolean;
   excerpt: string;
+  abbrlink?: number;
+}
+
+export interface SiteConfig {
+  url: string;
+  permalink: string;
+}
+
+export function getSiteConfig(hexoPath: string): SiteConfig {
+  const configPath = path.join(hexoPath, "_config.yml");
+  const defaults: SiteConfig = { url: "", permalink: ":year/:month/:day/:title/" };
+  if (!fs.existsSync(configPath)) return defaults;
+  try {
+    const content = fs.readFileSync(configPath, "utf-8");
+    const urlMatch = content.match(/^url:\s*(.+)$/m);
+    const permalinkMatch = content.match(/^permalink:\s*(.+)$/m);
+    return {
+      url: urlMatch ? urlMatch[1].trim().replace(/\/+$/, "") : "",
+      permalink: permalinkMatch ? permalinkMatch[1].trim() : defaults.permalink,
+    };
+  } catch {
+    return defaults;
+  }
 }
 
 export function getPostsDir(hexoPath: string): string {
@@ -96,6 +119,7 @@ function parsePost(filepath: string, filename: string, isDraftsFolder: boolean):
       categories,
       draft,
       excerpt: excerpt || "",
+      abbrlink: typeof data.abbrlink === "number" ? data.abbrlink : undefined,
     };
   } catch {
     return {
@@ -118,13 +142,26 @@ export function deletePost(filepath: string): void {
   fs.unlinkSync(filepath);
 }
 
-function slugify(title: string): string {
-  return title
-    .toLowerCase().trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
+// CRC32 table (matches hexo-abbrlink default: crc32 decimal)
+const CRC32_TABLE = (() => {
+  const table: number[] = [];
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[i] = c;
+  }
+  return table;
+})();
+
+function crc32(str: string): number {
+  const buf = Buffer.from(str, "utf8");
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) {
+    crc = CRC32_TABLE[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
 }
 
 export interface CreatePostOptions {
@@ -132,23 +169,25 @@ export interface CreatePostOptions {
   tags: string[];
   categories: string[];
   draft: boolean;
+  content?: string;
 }
 
 export function createPost(hexoPath: string, options: CreatePostOptions): HexoPost {
-  const { title, tags, categories, draft } = options;
+  const { title, tags, categories, draft, content = "" } = options;
   const targetDir = draft ? getDraftsDir(hexoPath) : getPostsDir(hexoPath);
   if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
-  const baseSlug = slugify(title) || "untitled";
-  let filename = `${baseSlug}.md`;
-  let counter = 1;
+  // Generate abbrlink (CRC32 of title) — same algorithm as hexo-abbrlink plugin
+  let abbrlink = crc32(title);
+  let filename = `${abbrlink}.md`;
   while (fs.existsSync(path.join(targetDir, filename))) {
-    filename = `${baseSlug}-${counter++}.md`;
+    abbrlink = (abbrlink + 1) >>> 0;
+    filename = `${abbrlink}.md`;
   }
 
-  const frontMatter: Record<string, unknown> = { title, date: new Date().toISOString(), tags, categories };
+  const frontMatter: Record<string, unknown> = { title, date: new Date().toISOString(), abbrlink, tags, categories };
   if (draft) frontMatter.draft = true;
-  const fileContent = matter.stringify("", frontMatter);
+  const fileContent = matter.stringify(content, frontMatter);
 
   const filepath = path.join(targetDir, filename);
   fs.writeFileSync(filepath, fileContent, "utf-8");

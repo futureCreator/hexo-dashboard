@@ -7,20 +7,21 @@ import DeployButton from "@/components/posts/DeployButton";
 import CommitButton from "@/components/posts/CommitButton";
 import { PostListSkeleton } from "@/components/ui/Skeleton";
 import { loadSettings } from "@/lib/settings";
-import { readPosts, hexoPathValid } from "@/lib/hexo";
+import { readPosts, hexoPathValid, getSiteConfig, type SiteConfig } from "@/lib/hexo";
 
 export const dynamic = "force-dynamic";
 
 async function getPostsData() {
   const { hexoPath } = loadSettings();
-  if (!hexoPath) return { configured: false, posts: [], hexoPath: "" };
-  if (!hexoPathValid(hexoPath)) return { configured: true, valid: false, posts: [], hexoPath };
+  if (!hexoPath) return { configured: false, posts: [], hexoPath: "", siteConfig: { url: "", permalink: "" } };
+  if (!hexoPathValid(hexoPath)) return { configured: true, valid: false, posts: [], hexoPath, siteConfig: { url: "", permalink: "" } };
   const posts = readPosts(hexoPath);
-  return { configured: true, valid: true, posts, hexoPath };
+  const siteConfig = getSiteConfig(hexoPath);
+  return { configured: true, valid: true, posts, hexoPath, siteConfig };
 }
 
 export default async function PostsPage() {
-  const { configured, valid, posts } = await getPostsData();
+  const { configured, valid, posts, siteConfig } = await getPostsData();
 
   return (
     <DashboardLayout>
@@ -146,7 +147,7 @@ export default async function PostsPage() {
         {/* Posts list */}
         {configured && valid && (
           <Suspense fallback={<PostListSkeleton />}>
-            <PostList initialPosts={posts} />
+            <PostList initialPosts={posts} siteConfig={siteConfig} />
           </Suspense>
         )}
       </div>

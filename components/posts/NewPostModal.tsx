@@ -22,34 +22,45 @@ function clientSlugify(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+type Mode = "manual" | "ai";
+
 export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [mode, setMode] = useState<Mode>("ai");
+
+  // Manual mode state
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState("");
   const [categories, setCategories] = useState("");
   const [draft, setDraft] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // AI mode state
+  const [source, setSource] = useState("");
+  const [perspective, setPerspective] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const titleRef = useRef<HTMLInputElement>(null);
+  const sourceRef = useRef<HTMLTextAreaElement>(null);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Reset form and focus on open
   useEffect(() => {
     if (isOpen) {
+      setMode("ai");
       setTitle("");
       setTags("");
       setCategories("");
       setDraft(true);
       setIsSubmitting(false);
-      // Delay focus to after animation
-      setTimeout(() => titleRef.current?.focus(), 50);
+      setSource("");
+      setPerspective("");
+      setIsGenerating(false);
+      setTimeout(() => sourceRef.current?.focus(), 50);
     }
   }, [isOpen]);
 
-  // Escape to close
   useEffect(() => {
     if (!isOpen) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -59,7 +70,16 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
 
-  const handleSubmit = useCallback(async () => {
+  useEffect(() => {
+    if (!isOpen) return;
+    if (mode === "ai") {
+      setTimeout(() => sourceRef.current?.focus(), 50);
+    } else {
+      setTimeout(() => titleRef.current?.focus(), 50);
+    }
+  }, [mode, isOpen]);
+
+  const handleManualSubmit = useCallback(async () => {
     if (!title.trim()) return;
     setIsSubmitting(true);
     try {
@@ -88,8 +108,33 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
     }
   }, [title, tags, categories, draft, onClose, onCreated, showToast]);
 
+  const handleAiSubmit = useCallback(async () => {
+    if (!source.trim()) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/ai-write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: source.trim(), perspective: perspective.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast({ type: "error", message: data.error || "Failed to generate post" });
+        return;
+      }
+      showToast({ type: "success", message: `"${data.post.title}" generated and saved as draft` });
+      onClose();
+      onCreated(data.post);
+    } catch (err) {
+      showToast({ type: "error", message: String(err) });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [source, perspective, onClose, onCreated, showToast]);
+
   const slug = clientSlugify(title) || (title.trim() ? "untitled" : "");
-  const canSubmit = title.trim().length > 0 && !isSubmitting;
+  const canManualSubmit = title.trim().length > 0 && !isSubmitting;
+  const canAiSubmit = source.trim().length > 0 && !isGenerating;
 
   if (!mounted) return null;
 
@@ -125,12 +170,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   <span className="text-sm font-medium text-[var(--foreground)]">New Post</span>
                 </div>
@@ -144,96 +184,157 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="px-5 py-5 flex flex-col gap-4">
-                {/* Title */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                    Title <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    ref={titleRef}
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && canSubmit) handleSubmit();
-                    }}
-                    placeholder="My new post"
-                    className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
-                  />
-                  {slug && (
-                    <p className="text-xs text-[var(--muted-foreground)] font-mono">
-                      <span className="opacity-50">slug: </span>{slug}.md
-                    </p>
-                  )}
-                </div>
-
-                {/* Tags */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                    Tags
-                  </label>
-                  <input
-                    type="text"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                    placeholder="tag1, tag2, tag3"
-                    className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-
-                {/* Categories */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                    Categories
-                  </label>
-                  <input
-                    type="text"
-                    value={categories}
-                    onChange={(e) => setCategories(e.target.value)}
-                    placeholder="category1, category2"
-                    className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-
-                {/* Draft toggle */}
-                <div className="flex items-center justify-between py-1">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--foreground)]">Draft</p>
-                    <p className="text-xs text-[var(--muted-foreground)]">
-                      {draft ? "Saved to _drafts" : "Saved to _posts"}
-                    </p>
-                  </div>
+              {/* Mode tabs */}
+              <div className="flex border-b border-[var(--border)]">
+                {(["manual", "ai"] as Mode[]).map((m) => (
                   <button
-                    type="button"
-                    onClick={() => setDraft((d) => !d)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${
-                      draft ? "bg-[var(--accent)]" : "bg-[var(--muted)]"
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`flex-1 py-2.5 text-xs font-medium transition-colors cursor-pointer ${
+                      mode === m
+                        ? "text-[var(--accent)] border-b-2 border-[var(--accent)]"
+                        : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                     }`}
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                        draft ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
+                    {m === "manual" ? "Manual" : "AI Write"}
                   </button>
-                </div>
+                ))}
+              </div>
+
+              {/* Body */}
+              <div className="px-5 py-5 flex flex-col gap-4">
+                {mode === "manual" ? (
+                  <>
+                    {/* Title */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                        Title <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        ref={titleRef}
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && canManualSubmit) handleManualSubmit(); }}
+                        placeholder="My new post"
+                        className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
+                      />
+                      {slug && (
+                        <p className="text-xs text-[var(--muted-foreground)] font-mono">
+                          <span className="opacity-50">slug: </span>{slug}.md
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                        Tags
+                      </label>
+                      <input
+                        type="text"
+                        value={tags}
+                        onChange={(e) => setTags(e.target.value)}
+                        placeholder="tag1, tag2, tag3"
+                        className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Categories */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                        Categories
+                      </label>
+                      <input
+                        type="text"
+                        value={categories}
+                        onChange={(e) => setCategories(e.target.value)}
+                        placeholder="category1, category2"
+                        className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Draft toggle */}
+                    <div className="flex items-center justify-between py-1">
+                      <div>
+                        <p className="text-sm font-medium text-[var(--foreground)]">Draft</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {draft ? "Saved to _drafts" : "Saved to _posts"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDraft((d) => !d)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${
+                          draft ? "bg-[var(--accent)]" : "bg-[var(--muted)]"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                            draft ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Source */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                        Source <span className="text-red-400">*</span>
+                      </label>
+                      <textarea
+                        ref={sourceRef}
+                        value={source}
+                        onChange={(e) => setSource(e.target.value)}
+                        placeholder="https://example.com/article  or paste text directly"
+                        rows={4}
+                        className="w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none font-mono"
+                      />
+                      <p className="text-xs text-[var(--muted-foreground)]">URL or plain text</p>
+                    </div>
+
+                    {/* Perspective */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                        My Perspective
+                      </label>
+                      <textarea
+                        value={perspective}
+                        onChange={(e) => setPerspective(e.target.value)}
+                        placeholder="What's your take on this? Any specific angle you want to highlight?"
+                        rows={3}
+                        className="w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none"
+                      />
+                    </div>
+
+                    {/* Fixed metadata notice */}
+                    <div className="flex gap-3 text-xs text-[var(--muted-foreground)] bg-[var(--accent-subtle)] rounded-lg px-3 py-2.5">
+                      <span>Category: <span className="text-[var(--foreground)]">Reviews</span></span>
+                      <span>·</span>
+                      <span>Tags: <span className="text-[var(--foreground)]">auto</span></span>
+                      <span>·</span>
+                      <span>Saved as: <span className="text-[var(--foreground)]">draft</span></span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Footer */}
               <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-[var(--border)]">
-                <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>
+                <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting || isGenerating}>
                   Cancel
                 </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit}
-                >
-                  {isSubmitting ? "Creating…" : "Create Post"}
-                </Button>
+                {mode === "manual" ? (
+                  <Button variant="primary" size="sm" onClick={handleManualSubmit} disabled={!canManualSubmit}>
+                    {isSubmitting ? "Creating…" : "Create Post"}
+                  </Button>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={handleAiSubmit} disabled={!canAiSubmit}>
+                    {isGenerating ? "Generating…" : "Generate & Create"}
+                  </Button>
+                )}
               </div>
             </div>
           </motion.div>

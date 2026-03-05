@@ -8,18 +8,19 @@ import { useToast } from "@/components/ui/Toast";
 import EditModal from "./EditModal";
 import NewPostModal from "./NewPostModal";
 import ContributionHeatmap from "./ContributionHeatmap";
-import type { HexoPost } from "@/lib/hexo";
+import type { HexoPost, SiteConfig } from "@/lib/hexo";
 
 type FilterType = "all" | "published" | "draft";
 type DateRange = "all" | "this-month" | "this-year";
 
 interface PostListProps {
   initialPosts: HexoPost[];
+  siteConfig: SiteConfig;
 }
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
-export default function PostList({ initialPosts }: PostListProps) {
+export default function PostList({ initialPosts, siteConfig }: PostListProps) {
   const [posts, setPosts] = useState<HexoPost[]>(initialPosts);
   const [filter, setFilter] = useState<FilterType>("all");
   const [query, setQuery] = useState("");
@@ -331,6 +332,7 @@ export default function PostList({ initialPosts }: PostListProps) {
               onDeleted={handleDeleted}
               onUpdated={handleUpdated}
               index={i}
+              siteConfig={siteConfig}
             />
           ))}
         </div>

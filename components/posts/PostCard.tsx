@@ -7,13 +7,27 @@ import Button from "@/components/ui/Button";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import EditModal from "./EditModal";
 import { useToast } from "@/components/ui/Toast";
-import type { HexoPost } from "@/lib/hexo";
+import type { HexoPost, SiteConfig } from "@/lib/hexo";
 
 interface PostCardProps {
   post: HexoPost;
   onDeleted: (filepath: string) => void;
   onUpdated: (post: HexoPost, oldFilepath?: string) => void;
   index?: number;
+  siteConfig?: SiteConfig;
+}
+
+function buildPostUrl(siteConfig: SiteConfig, post: HexoPost): string {
+  if (!siteConfig.url || post.draft) return "";
+  const date = post.date ? new Date(post.date) : null;
+  const slug = siteConfig.permalink
+    .replace(/:abbrlink/g, post.abbrlink != null ? String(post.abbrlink) : "")
+    .replace(/:year/g, date ? String(date.getUTCFullYear()) : "")
+    .replace(/:month/g, date ? String(date.getUTCMonth() + 1).padStart(2, "0") : "")
+    .replace(/:day/g, date ? String(date.getUTCDate()).padStart(2, "0") : "")
+    .replace(/:title/g, post.title.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""))
+    .replace(/:filename/g, post.filename.replace(/\.md$/, ""));
+  return `${siteConfig.url}/${slug}`.replace(/([^:])\/\//g, "$1/");
 }
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
@@ -32,6 +46,7 @@ export default function PostCard({
   onDeleted,
   onUpdated,
   index = 0,
+  siteConfig,
 }: PostCardProps) {
   const { showToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
@@ -116,9 +131,24 @@ export default function PostCard({
 
         {/* Main content */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-[var(--foreground)] leading-snug group-hover:text-[var(--accent)] transition-colors duration-150">
-            {post.title}
-          </p>
+          {siteConfig && buildPostUrl(siteConfig, post) ? (
+            <a
+              href={buildPostUrl(siteConfig, post)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium font-kopub text-[var(--foreground)] leading-snug hover:text-[var(--accent)] transition-colors duration-150 inline-flex items-center gap-1 group/link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {post.title}
+              <svg className="w-3 h-3 opacity-0 group-hover/link:opacity-60 transition-opacity shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          ) : (
+            <p className="text-sm font-medium font-kopub text-[var(--foreground)] leading-snug group-hover:text-[var(--accent)] transition-colors duration-150">
+              {post.title}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
             <span className="text-xs text-[var(--muted-foreground)] font-mono">
               {post.filename}

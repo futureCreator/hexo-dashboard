@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Calistoga, JetBrains_Mono } from "next/font/google";
+import { Inter, Calistoga, JetBrains_Mono, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -22,6 +22,13 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-jetbrains-mono",
+  display: "swap",
+});
+
+const notoSansKR = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-noto-sans-kr",
   display: "swap",
 });
 
@@ -54,7 +61,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${calistoga.variable} ${jetbrainsMono.variable}`}
+        className={`${inter.variable} ${calistoga.variable} ${jetbrainsMono.variable} ${notoSansKR.variable}`}
       >
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>

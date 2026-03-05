@@ -235,7 +235,7 @@ export default function EditModal({
                       }
                     }}
                     spellCheck={false}
-                    className="w-full h-full resize-none p-5 font-mono text-sm leading-relaxed bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none"
+                    className="w-full h-full resize-none p-5 font-kopub text-sm leading-relaxed bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none"
                     style={{ tabSize: 2 }}
                   />
                 )}
