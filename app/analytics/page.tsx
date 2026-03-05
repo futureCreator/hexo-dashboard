@@ -36,6 +36,7 @@ interface TrendRow {
 
 interface TopPage {
   page: string;
+  title?: string;
   views: number;
   sessions: number;
 }
@@ -341,8 +342,12 @@ export default function AnalyticsPage() {
                             className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors duration-150"
                           >
                             <td className="py-2.5 pr-4 text-xs text-[var(--muted-foreground)] tabular-nums">{i + 1}</td>
-                            <td className="py-2.5 pr-4 font-mono text-xs text-[var(--foreground)] max-w-xs truncate">
-                              {row.page}
+                            <td className="py-2.5 pr-4 text-xs text-[var(--foreground)] max-w-xs truncate">
+                              {row.title ? (
+                                <span title={row.page}>{row.title}</span>
+                              ) : (
+                                <span className="font-mono text-[var(--muted-foreground)]">{row.page}</span>
+                              )}
                             </td>
                             <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--foreground)]">
                               {row.views.toLocaleString()}
