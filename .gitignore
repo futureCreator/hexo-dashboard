@@ -31,3 +31,6 @@ public/workbox-*.js.map
 
 # Logs
 npm-debug.log*
+
+# Design spec
+SPEC.md
