@@ -5,6 +5,7 @@ import SectionLabel from "@/components/ui/SectionLabel";
 import PostList from "@/components/posts/PostList";
 import DeployButton from "@/components/posts/DeployButton";
 import CommitButton from "@/components/posts/CommitButton";
+import CleanButton from "@/components/posts/CleanButton";
 import { PostListSkeleton } from "@/components/ui/Skeleton";
 import { loadSettings } from "@/lib/settings";
 import { readPosts, hexoPathValid, getSiteConfig, type SiteConfig } from "@/lib/hexo";
@@ -42,6 +43,7 @@ export default async function PostsPage() {
           </div>
           {configured && valid && (
             <div className="flex items-center gap-2 shrink-0">
+              <CleanButton />
               <CommitButton />
               <DeployButton />
             </div>
