@@ -35,7 +35,7 @@ export default function CleanButton() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "c" && e.key !== "C") return;
+      if (e.key !== "x" && e.key !== "X") return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (isLoading) return;
@@ -76,7 +76,7 @@ export default function CleanButton() {
           </svg>
           Clean
           <kbd className="ml-1 text-[10px] font-mono px-1 py-0.5 rounded border border-[var(--border)] text-[var(--muted)] bg-[var(--surface)]">
-            c
+            x
           </kbd>
         </>
       )}
