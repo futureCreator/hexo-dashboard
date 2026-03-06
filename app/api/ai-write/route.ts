@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "fs";
 import { loadSettings } from "@/lib/settings";
 import { createPost, hexoPathValid } from "@/lib/hexo";
 
@@ -25,10 +26,22 @@ function targetWordCount(sourceLength: number): number {
 }
 
 export async function POST(request: NextRequest) {
-  const { source, perspective, category } = await request.json();
+  const body = await request.json();
 
-  if (!source?.trim()) {
-    return NextResponse.json({ error: "source is required" }, { status: 400 });
+  // Support both legacy `source` (string) and new `sources` (string[])
+  const rawSources: string[] = body.sources
+    ? body.sources.filter((s: string) => s?.trim())
+    : body.source?.trim()
+    ? [body.source.trim()]
+    : [];
+
+  const { perspective, category } = body;
+  const referenceFilepaths: string[] = Array.isArray(body.referencePosts)
+    ? body.referencePosts.filter((f: unknown) => typeof f === "string" && f.trim())
+    : [];
+
+  if (rawSources.length === 0) {
+    return NextResponse.json({ error: "At least one source is required" }, { status: 400 });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -40,21 +53,43 @@ export async function POST(request: NextRequest) {
   if (!hexoPath) return NextResponse.json({ error: "Hexo path not configured" }, { status: 400 });
   if (!hexoPathValid(hexoPath)) return NextResponse.json({ error: "Hexo path invalid" }, { status: 400 });
 
-  // Fetch URL content if source is a URL
-  let sourceText = source.trim();
-  if (isUrl(sourceText)) {
-    try {
-      const res = await fetch(sourceText, {
-        headers: { "User-Agent": "Mozilla/5.0" },
-        signal: AbortSignal.timeout(10000),
-      });
-      const html = await res.text();
-      sourceText = stripHtml(html);
-    } catch (err) {
-      return NextResponse.json({ error: `Failed to fetch URL: ${String(err)}` }, { status: 400 });
-    }
+  // Read reference posts (guard: must be within hexoPath)
+  const referenceTexts: string[] = referenceFilepaths
+    .filter((fp) => fp.startsWith(hexoPath))
+    .map((fp) => {
+      try {
+        const raw = fs.readFileSync(fp, "utf-8");
+        // Strip YAML frontmatter (--- ... ---)
+        const stripped = raw.replace(/^---[\s\S]*?---\n?/, "").trim();
+        return stripped.slice(0, 6000);
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean);
+
+  // Fetch all sources in parallel
+  let fetchedTexts: string[];
+  try {
+    fetchedTexts = await Promise.all(
+      rawSources.map(async (s, idx) => {
+        const trimmed = s.trim();
+        if (isUrl(trimmed)) {
+          const res = await fetch(trimmed, {
+            headers: { "User-Agent": "Mozilla/5.0" },
+            signal: AbortSignal.timeout(10000),
+          });
+          const html = await res.text();
+          return `[Source ${idx + 1}: ${trimmed}]\n${stripHtml(html)}`;
+        }
+        return `[Source ${idx + 1}]\n${trimmed.slice(0, 20000)}`;
+      })
+    );
+  } catch (err) {
+    return NextResponse.json({ error: `Failed to fetch source: ${String(err)}` }, { status: 400 });
   }
 
+  const sourceText = fetchedTexts.join("\n\n---\n\n");
   const minWords = targetWordCount(sourceText.length);
   const prompt = `You are writing a blog post for futureCreator blog. Follow these STRICT rules:
 
@@ -68,11 +103,13 @@ export async function POST(request: NextRequest) {
 8. Generate 3-5 relevant tags in English (e.g. "cloud", "aws", "kubernetes"). Tags must be lowercase English words or phrases, never Korean.
 9. Write a thorough, detailed post of at least ${minWords} words. Cover the topic in depth with multiple paragraphs — do NOT write a brief summary.
 
-SOURCE CONTENT (the topic):
+SOURCE CONTENT (the topic — may include multiple sources separated by ---):
 ${sourceText}
 
 MY PERSPECTIVE (incorporate this viewpoint):
 ${perspective?.trim() || "(none provided)"}
+${referenceTexts.length > 0 ? `\nMY PREVIOUS POSTS (use as reference for writing style, tone, AND perspective/viewpoint — build on these ideas and opinions where relevant, but do NOT copy sentences verbatim):
+${referenceTexts.map((t, i) => `[Ref ${i + 1}]\n${t}`).join("\n\n---\n\n")}` : ""}
 
 Return ONLY a valid JSON object with these exact keys:
 {

@@ -14,7 +14,7 @@ interface NewPostModalProps {
 }
 
 const GEN_STEPS = [
-  { label: "Fetching source", detail: "Reading the article or URL…" },
+  { label: "Fetching sources", detail: "Reading articles and URLs in parallel…" },
   { label: "Analyzing content", detail: "Understanding key points and context…" },
   { label: "Writing post", detail: "Composing your blog post with AI…" },
   { label: "Saving draft", detail: "Almost done, wrapping up…" },
@@ -108,11 +108,16 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // AI mode state
-  const [source, setSource] = useState("");
+  const [sources, setSources] = useState<string[]>([""]);
   const [perspective, setPerspective] = useState("");
   const [aiCategory, setAiCategory] = useState("AI");
   const [isGenerating, setIsGenerating] = useState(false);
   const [genStep, setGenStep] = useState(0);
+
+  // Reference posts state
+  const [allPosts, setAllPosts] = useState<HexoPost[]>([]);
+  const [selectedRefs, setSelectedRefs] = useState<string[]>([]); // filepaths
+  const [refSearch, setRefSearch] = useState("");
 
   const titleRef = useRef<HTMLInputElement>(null);
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -128,12 +133,19 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
       setCategories("");
       setDraft(true);
       setIsSubmitting(false);
-      setSource("");
+      setSources([""]);
       setPerspective("");
       setAiCategory("AI");
       setIsGenerating(false);
       setGenStep(0);
+      setSelectedRefs([]);
+      setRefSearch("");
       setTimeout(() => sourceRef.current?.focus(), 50);
+      // Load posts list for reference picker
+      fetch("/api/posts")
+        .then((r) => r.json())
+        .then((d) => { if (d.posts) setAllPosts(d.posts); })
+        .catch(() => {});
     }
   }, [isOpen]);
 
@@ -185,7 +197,8 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
   }, [title, tags, categories, draft, onClose, onCreated, showToast]);
 
   const handleAiSubmit = useCallback(async () => {
-    if (!source.trim()) return;
+    const validSources = sources.filter((s) => s.trim());
+    if (validSources.length === 0) return;
     setIsGenerating(true);
     setGenStep(0);
 
@@ -199,7 +212,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
       const res = await fetch("/api/ai-write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: source.trim(), perspective: perspective.trim(), category: aiCategory }),
+        body: JSON.stringify({ sources: validSources, perspective: perspective.trim(), category: aiCategory, referencePosts: selectedRefs }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -216,11 +229,11 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
       setIsGenerating(false);
       setGenStep(0);
     }
-  }, [source, perspective, onClose, onCreated, showToast]);
+  }, [sources, perspective, aiCategory, selectedRefs, onClose, onCreated, showToast]);
 
   const slug = clientSlugify(title) || (title.trim() ? "untitled" : "");
   const canManualSubmit = title.trim().length > 0 && !isSubmitting;
-  const canAiSubmit = source.trim().length > 0 && !isGenerating;
+  const canAiSubmit = sources.some((s) => s.trim().length > 0) && !isGenerating;
 
   if (!mounted) return null;
 
@@ -367,20 +380,52 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                   <AiGeneratingView step={genStep} />
                 ) : (
                   <>
-                    {/* Source */}
+                    {/* Sources */}
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                        Source <span className="text-red-400">*</span>
+                        Sources <span className="text-red-400">*</span>
                       </label>
-                      <textarea
-                        ref={sourceRef}
-                        value={source}
-                        onChange={(e) => setSource(e.target.value)}
-                        placeholder="https://example.com/article  or paste text directly"
-                        rows={4}
-                        className="w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none font-mono"
-                      />
-                      <p className="text-xs text-[var(--muted-foreground)]">URL or plain text</p>
+                      <div className="flex flex-col gap-2">
+                        {sources.map((src, idx) => (
+                          <div key={idx} className="flex gap-1.5">
+                            <textarea
+                              ref={idx === 0 ? sourceRef : undefined}
+                              value={src}
+                              onChange={(e) => {
+                                const next = [...sources];
+                                next[idx] = e.target.value;
+                                setSources(next);
+                              }}
+                              placeholder={idx === 0 ? "https://example.com/article  or paste text directly" : "https://... or paste text"}
+                              rows={2}
+                              className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none font-mono"
+                            />
+                            {sources.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setSources(sources.filter((_, i) => i !== idx))}
+                                className="w-7 h-7 mt-1 flex items-center justify-center rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer shrink-0"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {sources.length < 5 && (
+                        <button
+                          type="button"
+                          onClick={() => setSources([...sources, ""])}
+                          className="self-start flex items-center gap-1.5 text-xs text-[var(--accent)] hover:opacity-80 transition-opacity cursor-pointer mt-0.5"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Add source
+                        </button>
+                      )}
                     </div>
 
                     {/* Perspective */}
@@ -395,6 +440,79 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                         rows={3}
                         className="w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none"
                       />
+                    </div>
+
+                    {/* Reference Posts */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                        Reference Posts
+                        {selectedRefs.length > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] normal-case font-semibold">
+                            {selectedRefs.length}
+                          </span>
+                        )}
+                      </label>
+                      <div className="flex flex-col gap-1.5 border border-[var(--border)] rounded-lg overflow-hidden">
+                        <div className="px-2.5 pt-2.5">
+                          <input
+                            type="text"
+                            value={refSearch}
+                            onChange={(e) => setRefSearch(e.target.value)}
+                            placeholder="Search posts…"
+                            className="w-full h-8 px-2.5 rounded-md border border-[var(--border)] bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] transition-all"
+                          />
+                        </div>
+                        <div className="max-h-40 overflow-y-auto px-1 pb-1.5">
+                          {allPosts
+                            .filter((p) => refSearch === "" || p.title.toLowerCase().includes(refSearch.toLowerCase()))
+                            .slice(0, 30)
+                            .map((p) => {
+                              const checked = selectedRefs.includes(p.filepath);
+                              return (
+                                <button
+                                  key={p.filepath}
+                                  type="button"
+                                  onClick={() => {
+                                    if (checked) {
+                                      setSelectedRefs(selectedRefs.filter((f) => f !== p.filepath));
+                                    } else if (selectedRefs.length < 3) {
+                                      setSelectedRefs([...selectedRefs, p.filepath]);
+                                    }
+                                  }}
+                                  className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer ${
+                                    checked
+                                      ? "bg-[var(--accent-subtle)]"
+                                      : selectedRefs.length >= 3
+                                      ? "opacity-40 cursor-not-allowed"
+                                      : "hover:bg-[var(--muted)]"
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors ${
+                                    checked ? "bg-[var(--accent)] border-[var(--accent)]" : "border-[var(--border)]"
+                                  }`}>
+                                    {checked && (
+                                      <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-[var(--foreground)] truncate flex-1">{p.title}</span>
+                                  {p.date && (
+                                    <span className="text-xs text-[var(--muted-foreground)] shrink-0">
+                                      {new Date(p.date).toLocaleDateString("ko-KR", { year: "2-digit", month: "numeric", day: "numeric" })}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          {allPosts.filter((p) => refSearch === "" || p.title.toLowerCase().includes(refSearch.toLowerCase())).length === 0 && (
+                            <p className="text-xs text-[var(--muted-foreground)] px-2 py-2">No posts found</p>
+                          )}
+                        </div>
+                        {selectedRefs.length >= 3 && (
+                          <p className="text-xs text-[var(--muted-foreground)] px-3 pb-2">Max 3 reference posts</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Category selector */}
@@ -441,7 +559,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                   </Button>
                 ) : (
                   <Button variant="primary" size="sm" onClick={handleAiSubmit} disabled={!canAiSubmit}>
-                    Generate & Create
+                    {isSubmitting ? "Creating…" : "Create Post"}
                   </Button>
                 )}
               </div>
