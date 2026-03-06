@@ -54,6 +54,11 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.14 - 2026-03-07
+- Enhanced **Home dashboard** with top categories, top tags, and 12-month activity charts
+- Added `HomeNewPostButton` and `MonthlyBarChart` components for better home page organization
+- Refactored `ContributionHeatmap` component for improved maintainability
+
 ### v0.1.13 - 2026-03-07
 - Extended analytics period selector from 2 options (7/30 days) to 4 options: **7, 14, 30, 90 days** — for both Google Analytics and Search Console tabs
 - API routes now accept all four period values with proper validation (falls back to 7 days for unknown values)

@@ -197,8 +197,7 @@ export default function ContributionHeatmap({ posts }: Props) {
     >
       <div
         ref={containerRef}
-        className="relative rounded-xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 grid items-center gap-6"
-        style={{ gridTemplateColumns: "minmax(0, 1fr) auto" }}
+        className="relative rounded-xl border border-[var(--border)] bg-[var(--card)] px-5 pt-4 pb-4 flex flex-col gap-4"
       >
         {/* Heatmap */}
         <div className="overflow-x-auto">
@@ -266,11 +265,27 @@ export default function ContributionHeatmap({ posts }: Props) {
           </div>
         </div>
 
+        {/* Legend */}
+        <div className="flex items-center gap-1.5 justify-end">
+          <span className="text-[9px] font-mono text-[var(--muted-foreground)] select-none">Less</span>
+          {([0, 1, 2, 3, 4] as const).map((level) => (
+            <div
+              key={level}
+              className="heatmap-cell rounded-sm"
+              data-level={level}
+              style={{ width: CELL, height: CELL }}
+            />
+          ))}
+          <span className="text-[9px] font-mono text-[var(--muted-foreground)] select-none">More</span>
+        </div>
+
         {/* Streak stats */}
-        <div className="flex flex-col gap-3 w-[88px] pl-2 border-l border-[var(--border)]">
-          <StreakStat label="Current" value={currentStreak} unit="days" highlight={currentStreak > 0} />
-          <StreakStat label="Longest" value={longestStreak} unit="days" />
-          <StreakStat label="This year" value={totalPosts} unit="posts" />
+        <div className="flex items-center gap-6 pt-3 border-t border-[var(--border)]">
+          <StreakStat label="Current Streak" value={currentStreak} unit="days" highlight={currentStreak > 0} />
+          <div className="w-px h-8 bg-[var(--border)]" />
+          <StreakStat label="Longest Streak" value={longestStreak} unit="days" />
+          <div className="w-px h-8 bg-[var(--border)]" />
+          <StreakStat label="This Year" value={totalPosts} unit="posts" />
         </div>
 
         {/* Tooltip */}

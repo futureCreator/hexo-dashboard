@@ -3,6 +3,9 @@ import path from "path";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import SectionLabel from "@/components/ui/SectionLabel";
+import HomeNewPostButton from "@/components/home/HomeNewPostButton";
+import MonthlyBarChart from "@/components/home/MonthlyBarChart";
+import ContributionHeatmap from "@/components/posts/ContributionHeatmap";
 import { loadSettings } from "@/lib/settings";
 import { readPosts, hexoPathValid, getSiteConfig } from "@/lib/hexo";
 
@@ -30,6 +33,46 @@ async function getDashboardData() {
 
   const recentPosts = posts.slice(0, 6);
 
+  // Top categories
+  const categoryCountMap: Record<string, number> = {};
+  posts.forEach((p) => {
+    p.categories.forEach((c) => {
+      categoryCountMap[c] = (categoryCountMap[c] || 0) + 1;
+    });
+  });
+  const topCategories = Object.entries(categoryCountMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+
+  // Top tags
+  const tagCountMap: Record<string, number> = {};
+  posts.forEach((p) => {
+    p.tags.forEach((t) => {
+      tagCountMap[t] = (tagCountMap[t] || 0) + 1;
+    });
+  });
+  const topTags = Object.entries(tagCountMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, count]) => ({ name, count }));
+
+  // Monthly counts for last 12 months
+  const now2 = new Date();
+  const monthCountMap: Record<string, number> = {};
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now2.getFullYear(), now2.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    monthCountMap[key] = 0;
+  }
+  posts.forEach((p) => {
+    if (!p.date) return;
+    const d = new Date(p.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (key in monthCountMap) monthCountMap[key]++;
+  });
+  const monthlyCounts = Object.entries(monthCountMap).map(([month, count]) => ({ month, count }));
+
   let lastGeneratedAt: string | null = null;
   const publicDir = path.join(hexoPath, "public");
   if (fs.existsSync(publicDir)) {
@@ -39,13 +82,17 @@ async function getDashboardData() {
   return {
     configured: true as const,
     valid: true as const,
+    posts,
     totalCount: posts.length,
     publishedCount: published.length,
     draftCount: drafts.length,
     todayCount: todayPosts.length,
     recentPosts,
+    monthlyCounts,
     siteConfig,
     lastGeneratedAt,
+    topCategories,
+    topTags,
   };
 }
 
@@ -109,19 +156,22 @@ export default async function HomePage() {
     <DashboardLayout>
       <div className="px-4 py-6 sm:px-8 sm:py-10 max-w-5xl">
         {/* Header */}
-        <div className="mb-8">
-          <SectionLabel pulse className="mb-4">
-            Overview
-          </SectionLabel>
-          <h1 className="font-display text-3xl sm:text-4xl text-[var(--foreground)] leading-tight mb-2">
-            Welcome to{" "}
-            <span className="gradient-text">Hexo Dashboard</span>
-          </h1>
-          <p className="text-[var(--muted-foreground)] text-sm">
-            {data.configured && data.valid && data.siteConfig.url
-              ? `Managing ${data.siteConfig.url}`
-              : "Your Hexo blog management hub."}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
+          <div>
+            <SectionLabel pulse className="mb-4">
+              Overview
+            </SectionLabel>
+            <h1 className="font-display text-3xl sm:text-4xl text-[var(--foreground)] leading-tight mb-2">
+              Welcome to{" "}
+              <span className="gradient-text">Hexo Dashboard</span>
+            </h1>
+            <p className="text-[var(--muted-foreground)] text-sm">
+              {data.configured && data.valid && data.siteConfig.url
+                ? `Managing ${data.siteConfig.url}`
+                : "Your Hexo blog management hub."}
+            </p>
+          </div>
+          {data.configured && data.valid && <HomeNewPostButton />}
         </div>
 
         {/* Not configured */}
@@ -209,6 +259,18 @@ export default async function HomePage() {
                   </svg>
                 }
               />
+            </div>
+
+            {/* Contribution heatmap */}
+            <ContributionHeatmap posts={data.posts} />
+
+            {/* Monthly bar chart */}
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] px-5 pt-4 pb-5 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-[var(--foreground)]">Posts per Month</h2>
+                <span className="text-xs text-[var(--muted-foreground)]">Last 12 months</span>
+              </div>
+              <MonthlyBarChart data={data.monthlyCounts} />
             </div>
 
             {/* Main content grid */}
@@ -352,6 +414,43 @@ export default async function HomePage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Top Categories */}
+                {data.topCategories.length > 0 && (
+                  <div>
+                    <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Top Categories</h2>
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] divide-y divide-[var(--border)]">
+                      {data.topCategories.map(({ name, count }) => (
+                        <div key={name} className="px-4 py-2.5 flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-[var(--foreground)] truncate">{name}</span>
+                          <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--accent-subtle)] text-[var(--accent)]">
+                            {count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Tags */}
+                {data.topTags.length > 0 && (
+                  <div>
+                    <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Top Tags</h2>
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] p-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {data.topTags.map(({ name, count }) => (
+                          <span
+                            key={name}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--muted)] text-[var(--foreground)] text-xs font-medium"
+                          >
+                            {name}
+                            <span className="text-[10px] text-[var(--muted-foreground)]">{count}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </>

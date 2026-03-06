@@ -7,7 +7,6 @@ import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import EditModal from "./EditModal";
 import NewPostModal from "./NewPostModal";
-import ContributionHeatmap from "./ContributionHeatmap";
 import type { HexoPost, SiteConfig } from "@/lib/hexo";
 
 type FilterType = "all" | "published" | "draft";
@@ -129,59 +128,6 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
 
   return (
     <div>
-      {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: easeOut }}
-        className="grid grid-cols-3 gap-3 sm:gap-4 mb-8"
-      >
-        {[
-          { label: "Total Posts", value: posts.length, accent: null },
-          { label: "Published", value: published, accent: "emerald" },
-          { label: "Drafts", value: drafts, accent: "amber" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-[var(--stat-card)] rounded-xl p-3 sm:p-5 relative overflow-hidden"
-          >
-            <div
-              className="absolute inset-0 opacity-[0.03]"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle, white 1px, transparent 1px)",
-                backgroundSize: "32px 32px",
-              }}
-            />
-            {stat.accent === "emerald" && (
-              <div className="absolute top-0 right-0 w-16 h-16 rounded-full bg-emerald-500 opacity-[0.12] -translate-y-4 translate-x-4 blur-xl" />
-            )}
-            {stat.accent === "amber" && (
-              <div className="absolute top-0 right-0 w-16 h-16 rounded-full bg-amber-400 opacity-[0.12] -translate-y-4 translate-x-4 blur-xl" />
-            )}
-            <div className="relative">
-              <div
-                className={`text-2xl sm:text-3xl font-bold mb-1 ${
-                  stat.accent === "emerald"
-                    ? "text-emerald-400"
-                    : stat.accent === "amber"
-                    ? "text-amber-400"
-                    : "text-white"
-                }`}
-              >
-                {stat.value}
-              </div>
-              <div className="text-xs text-white/60 font-mono uppercase tracking-wider">
-                {stat.label}
-              </div>
-            </div>
-          </div>
-        ))}
-      </motion.div>
-
-      {/* Contribution heatmap */}
-      <ContributionHeatmap posts={posts} />
-
       {/* Search + Date filter */}
       <motion.div
         initial={{ opacity: 0 }}
