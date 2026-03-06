@@ -13,6 +13,78 @@ interface NewPostModalProps {
   onCreated: (post: HexoPost) => void;
 }
 
+const GEN_STEPS = [
+  { label: "Fetching source", detail: "Reading the article or URL…" },
+  { label: "Analyzing content", detail: "Understanding key points and context…" },
+  { label: "Writing post", detail: "Composing your blog post with AI…" },
+  { label: "Saving draft", detail: "Almost done, wrapping up…" },
+];
+
+function AiGeneratingView({ step }: { step: number }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-6 py-6">
+      {/* Spinner */}
+      <div className="relative w-12 h-12">
+        <motion.div
+          className="absolute inset-0 rounded-full border-2 border-[var(--accent)] border-t-transparent"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+        />
+        <div className="absolute inset-1.5 rounded-full bg-[var(--accent-subtle)]" />
+      </div>
+
+      {/* Steps */}
+      <div className="w-full flex flex-col gap-2">
+        {GEN_STEPS.map((s, i) => {
+          const done = i < step;
+          const active = i === step;
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: done ? 0.4 : active ? 1 : 0.25, x: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.04 }}
+              className="flex items-center gap-3"
+            >
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${
+                done
+                  ? "bg-[var(--accent)] text-white"
+                  : active
+                  ? "border-2 border-[var(--accent)]"
+                  : "border border-[var(--border)]"
+              }`}>
+                {done ? (
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : active ? (
+                  <motion.div
+                    className="w-2 h-2 rounded-full bg-[var(--accent)]"
+                    animate={{ scale: [1, 1.4, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                ) : null}
+              </div>
+              <div className="flex flex-col">
+                <span className={`text-sm font-medium transition-colors duration-300 ${
+                  active ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]"
+                }`}>{s.label}</span>
+                {active && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-xs text-[var(--muted-foreground)]"
+                  >{s.detail}</motion.span>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function clientSlugify(title: string): string {
   return title
     .toLowerCase().trim()
@@ -39,6 +111,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
   const [source, setSource] = useState("");
   const [perspective, setPerspective] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [genStep, setGenStep] = useState(0);
 
   const titleRef = useRef<HTMLInputElement>(null);
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -57,6 +130,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
       setSource("");
       setPerspective("");
       setIsGenerating(false);
+      setGenStep(0);
       setTimeout(() => sourceRef.current?.focus(), 50);
     }
   }, [isOpen]);
@@ -111,6 +185,14 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
   const handleAiSubmit = useCallback(async () => {
     if (!source.trim()) return;
     setIsGenerating(true);
+    setGenStep(0);
+
+    const stepTimers = [
+      setTimeout(() => setGenStep(1), 2500),
+      setTimeout(() => setGenStep(2), 6000),
+      setTimeout(() => setGenStep(3), 11000),
+    ];
+
     try {
       const res = await fetch("/api/ai-write", {
         method: "POST",
@@ -128,7 +210,9 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
     } catch (err) {
       showToast({ type: "error", message: String(err) });
     } finally {
+      stepTimers.forEach(clearTimeout);
       setIsGenerating(false);
+      setGenStep(0);
     }
   }, [source, perspective, onClose, onCreated, showToast]);
 
@@ -277,6 +361,8 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                       </button>
                     </div>
                   </>
+                ) : isGenerating ? (
+                  <AiGeneratingView step={genStep} />
                 ) : (
                   <>
                     {/* Source */}
@@ -332,7 +418,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                   </Button>
                 ) : (
                   <Button variant="primary" size="sm" onClick={handleAiSubmit} disabled={!canAiSubmit}>
-                    {isGenerating ? "Generating…" : "Generate & Create"}
+                    Generate & Create
                   </Button>
                 )}
               </div>

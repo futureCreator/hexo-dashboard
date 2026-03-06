@@ -1,10 +1,7 @@
-import { exec } from "child_process";
-import { promisify } from "util";
+import { spawn } from "child_process";
 import { NextResponse } from "next/server";
 import { loadSettings } from "@/lib/settings";
 import { hexoPathValid } from "@/lib/hexo";
-
-const execAsync = promisify(exec);
 
 export async function POST() {
   const { hexoPath } = loadSettings();
@@ -17,17 +14,55 @@ export async function POST() {
     return NextResponse.json({ error: "Hexo path is invalid" }, { status: 400 });
   }
 
-  try {
-    const { stdout, stderr } = await execAsync("hexo generate && hexo deploy", {
-      cwd: hexoPath,
-      timeout: 120_000,
-    });
+  const encoder = new TextEncoder();
 
-    const output = [stdout, stderr].filter(Boolean).join("\n").trim();
-    return NextResponse.json({ success: true, output });
-  } catch (err: unknown) {
-    const error = err as { stdout?: string; stderr?: string; message?: string };
-    const output = [error.stdout, error.stderr, error.message].filter(Boolean).join("\n").trim();
-    return NextResponse.json({ success: false, output }, { status: 500 });
-  }
+  const stream = new ReadableStream({
+    start(controller) {
+      const send = (data: object) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      };
+
+      const child = spawn("sh", ["-c", "hexo generate && hexo deploy"], {
+        cwd: hexoPath,
+      });
+
+      const timeout = setTimeout(() => {
+        child.kill();
+        send({ type: "done", success: false, error: "Timeout after 120s" });
+        controller.close();
+      }, 120_000);
+
+      child.stdout.on("data", (chunk: Buffer) => {
+        chunk.toString().split("\n").forEach((line: string) => {
+          if (line.trim()) send({ type: "log", line });
+        });
+      });
+
+      child.stderr.on("data", (chunk: Buffer) => {
+        chunk.toString().split("\n").forEach((line: string) => {
+          if (line.trim()) send({ type: "log", line });
+        });
+      });
+
+      child.on("close", (code: number | null) => {
+        clearTimeout(timeout);
+        send({ type: "done", success: code === 0, code });
+        controller.close();
+      });
+
+      child.on("error", (err: Error) => {
+        clearTimeout(timeout);
+        send({ type: "done", success: false, error: err.message });
+        controller.close();
+      });
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }
