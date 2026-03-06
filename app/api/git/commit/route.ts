@@ -21,10 +21,21 @@ export async function POST() {
   const message = `Update: ${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
   try {
-    const { stdout: addOut, stderr: addErr } = await execFileAsync("git", ["add", "."], {
+    // Stage all changes: modified, deleted, and untracked files
+    const { stdout: addOut, stderr: addErr } = await execFileAsync("git", ["add", "-A"], {
       cwd: hexoPath,
       timeout: 15_000,
     });
+
+    // Check if there is anything to commit
+    const { stdout: statusOut } = await execFileAsync("git", ["status", "--porcelain"], {
+      cwd: hexoPath,
+      timeout: 10_000,
+    });
+
+    if (!statusOut.trim()) {
+      return NextResponse.json({ success: true, output: "Nothing to commit, working tree clean." });
+    }
 
     const { stdout: commitOut, stderr: commitErr } = await execFileAsync(
       "git",

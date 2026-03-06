@@ -8,6 +8,7 @@ export interface Settings {
   hexoPath: string;
   gaPropertyId?: string;
   gaServiceAccountPath?: string;
+  gscSiteUrl?: string;
 }
 
 export function loadSettings(): Settings {

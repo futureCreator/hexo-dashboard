@@ -49,6 +49,45 @@ interface AnalyticsData {
   error?: string;
 }
 
+interface GscSummary {
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface GscTrendRow {
+  date: string;
+  clicks: number;
+  impressions: number;
+}
+
+interface GscQuery {
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface GscPage {
+  page: string;
+  title?: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface GscData {
+  configured: boolean;
+  summary?: GscSummary;
+  trend?: GscTrendRow[];
+  topQueries?: GscQuery[];
+  topPages?: GscPage[];
+  error?: string;
+}
+
 function formatDate(raw: string) {
   // raw: "YYYYMMDD"
   if (raw.length !== 8) return raw;
@@ -81,15 +120,21 @@ function CustomTooltip(props: TooltipProps<number, string>) {
 export default function AnalyticsPage() {
   const { resolvedTheme } = useTheme();
   const [period, setPeriod] = useState<7 | 30>(7);
+  const [tab, setTab] = useState<"ga" | "gsc">("ga");
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [gscData, setGscData] = useState<GscData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async (days: 7 | 30) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/analytics?period=${days}`);
-      const json = await res.json();
-      setData(json);
+      const [gaRes, gscRes] = await Promise.all([
+        fetch(`/api/analytics?period=${days}`),
+        fetch(`/api/search-console?period=${days}`),
+      ]);
+      const [gaJson, gscJson] = await Promise.all([gaRes.json(), gscRes.json()]);
+      setData(gaJson);
+      setGscData(gscJson);
     } finally {
       setLoading(false);
     }
@@ -104,6 +149,8 @@ export default function AnalyticsPage() {
   const accentSecondary = resolvedTheme === "dark" ? "#7B8FE8" : "#4F87FF";
   const mutedColor = resolvedTheme === "dark" ? "#3a3a4a" : "#e5e7eb";
   const mutedFg = resolvedTheme === "dark" ? "#71717a" : "#6b7280";
+  const gscClickColor = resolvedTheme === "dark" ? "#34d399" : "#059669";
+  const gscImpressionColor = resolvedTheme === "dark" ? "#6ee7b7" : "#34d399";
 
   const statCards = data?.summary
     ? [
@@ -130,13 +177,10 @@ export default function AnalyticsPage() {
               Site{" "}
               <span className="gradient-text">Analytics</span>
             </h1>
-            <p className="text-[var(--muted-foreground)] text-sm">
-              Google Analytics 4 metrics for your blog.
-            </p>
           </div>
-          {/* Period toggle */}
-          {data?.configured !== false && (
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)] shrink-0">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            {/* Period toggle */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)]">
               {([7, 30] as const).map((d) => (
                 <button
                   key={d}
@@ -151,11 +195,38 @@ export default function AnalyticsPage() {
                 </button>
               ))}
             </div>
-          )}
+          </div>
+        </motion.div>
+
+        {/* Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: easeOut, delay: 0.1 }}
+          className="mb-6 flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)] w-fit"
+        >
+          {(
+            [
+              { key: "ga", label: "Google Analytics" },
+              { key: "gsc", label: "Search Console" },
+            ] as const
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                tab === key
+                  ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </motion.div>
 
         {/* Not configured */}
-        {!loading && data?.configured === false && (
+        {!loading && tab === "ga" && data?.configured === false && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -188,7 +259,7 @@ export default function AnalyticsPage() {
         )}
 
         {/* Error */}
-        {!loading && data?.error && (
+        {!loading && tab === "ga" && data?.error && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -226,8 +297,32 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Data */}
-        {!loading && data?.configured && data.summary && (
+        {/* GSC not configured notice */}
+        {!loading && tab === "gsc" && gscData?.configured === false && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: easeOut, delay: 0.05 }}
+            className="mb-6"
+          >
+            <Card className="p-5 flex items-center gap-4">
+              <div className="w-9 h-9 rounded-xl bg-[var(--accent-subtle)] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--foreground)]">Search Console not configured</p>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  Add your site URL in <Link href="/settings" className="text-[var(--accent)] hover:underline">Settings</Link> to see search performance data.
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* GA Data */}
+        {!loading && tab === "ga" && data?.configured && data.summary && (
           <div className="space-y-6">
             {/* Stat cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -355,6 +450,206 @@ export default function AnalyticsPage() {
                             <td className="py-2.5 text-right text-xs tabular-nums text-[var(--foreground)]">
                               {row.sessions.toLocaleString()}
                             </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+          </div>
+        )}
+
+        {/* GSC error */}
+        {!loading && tab === "gsc" && gscData?.error && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: easeOut, delay: 0.1 }}
+          >
+            <Card className="p-8">
+              <p className="text-sm text-red-500 font-mono">{gscData.error}</p>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* GSC Data */}
+        {!loading && tab === "gsc" && gscData?.configured && gscData.summary && (
+          <div className="space-y-6">
+            {/* GSC stat cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: "Clicks", value: gscData.summary.clicks.toLocaleString() },
+                { label: "Impressions", value: gscData.summary.impressions.toLocaleString() },
+                { label: "CTR", value: `${(gscData.summary.ctr * 100).toFixed(1)}%` },
+                { label: "Avg. Position", value: gscData.summary.position.toFixed(1) },
+              ].map((card, i) => (
+                <motion.div
+                  key={card.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: easeOut, delay: 0.1 + i * 0.05 }}
+                >
+                  <Card className="p-5">
+                    <p className="text-xs text-[var(--muted-foreground)] mb-2">{card.label}</p>
+                    <p className="text-2xl font-semibold text-[var(--foreground)] tabular-nums">{card.value}</p>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* GSC trend chart */}
+            {gscData.trend && gscData.trend.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: easeOut, delay: 0.3 }}
+              >
+                <Card className="p-6">
+                  <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
+                    Search Trend — last {period} days
+                  </h2>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart
+                      data={gscData.trend}
+                      margin={{ top: 4, right: 4, bottom: 0, left: -20 }}
+                    >
+                      <CartesianGrid stroke={mutedColor} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11, fill: mutedFg }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: mutedFg }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line
+                        type="monotone"
+                        dataKey="clicks"
+                        name="Clicks"
+                        stroke={gscClickColor}
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4, strokeWidth: 0 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="impressions"
+                        name="Impressions"
+                        stroke={gscImpressionColor}
+                        strokeWidth={2}
+                        strokeDasharray="4 2"
+                        dot={false}
+                        activeDot={{ r: 4, strokeWidth: 0 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="flex items-center gap-5 mt-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-0.5 rounded" style={{ backgroundColor: gscClickColor, display: "inline-block" }} />
+                      <span className="text-xs text-[var(--muted-foreground)]">Clicks</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-0.5 rounded" style={{ backgroundColor: gscImpressionColor, display: "inline-block" }} />
+                      <span className="text-xs text-[var(--muted-foreground)]">Impressions</span>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Top Queries */}
+            {gscData.topQueries && gscData.topQueries.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: easeOut, delay: 0.35 }}
+              >
+                <Card className="p-6">
+                  <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
+                    Top Queries — last {period} days
+                  </h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="text-left py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)] w-8">#</th>
+                          <th className="text-left py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">Query</th>
+                          <th className="text-right py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">Clicks</th>
+                          <th className="text-right py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">Impressions</th>
+                          <th className="text-right py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">CTR</th>
+                          <th className="text-right py-2 text-xs font-medium text-[var(--muted-foreground)]">Position</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {gscData.topQueries.map((row, i) => (
+                          <tr
+                            key={row.query}
+                            className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors duration-150"
+                          >
+                            <td className="py-2.5 pr-4 text-xs text-[var(--muted-foreground)] tabular-nums">{i + 1}</td>
+                            <td className="py-2.5 pr-4 text-xs text-[var(--foreground)] max-w-xs truncate">{row.query}</td>
+                            <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--foreground)]">{row.clicks.toLocaleString()}</td>
+                            <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--foreground)]">{row.impressions.toLocaleString()}</td>
+                            <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--muted-foreground)]">{(row.ctr * 100).toFixed(1)}%</td>
+                            <td className="py-2.5 text-right text-xs tabular-nums text-[var(--muted-foreground)]">{row.position.toFixed(1)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* GSC Top Pages */}
+            {gscData.topPages && gscData.topPages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: easeOut, delay: 0.4 }}
+              >
+                <Card className="p-6">
+                  <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
+                    Top Pages — last {period} days
+                  </h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="text-left py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)] w-8">#</th>
+                          <th className="text-left py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">Page</th>
+                          <th className="text-right py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">Clicks</th>
+                          <th className="text-right py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">Impressions</th>
+                          <th className="text-right py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">CTR</th>
+                          <th className="text-right py-2 text-xs font-medium text-[var(--muted-foreground)]">Position</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {gscData.topPages.map((row, i) => (
+                          <tr
+                            key={row.page}
+                            className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors duration-150"
+                          >
+                            <td className="py-2.5 pr-4 text-xs text-[var(--muted-foreground)] tabular-nums">{i + 1}</td>
+                            <td className="py-2.5 pr-4 text-xs text-[var(--foreground)] max-w-xs truncate">
+                              {row.title ? (
+                                <span title={row.page}>{row.title}</span>
+                              ) : (
+                                <span className="font-mono text-[var(--muted-foreground)]" title={row.page}>
+                                  {row.page.replace(/^https?:\/\/[^/]+/, "")}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--foreground)]">{row.clicks.toLocaleString()}</td>
+                            <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--foreground)]">{row.impressions.toLocaleString()}</td>
+                            <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--muted-foreground)]">{(row.ctr * 100).toFixed(1)}%</td>
+                            <td className="py-2.5 text-right text-xs tabular-nums text-[var(--muted-foreground)]">{row.position.toFixed(1)}</td>
                           </tr>
                         ))}
                       </tbody>

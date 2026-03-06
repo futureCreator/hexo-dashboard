@@ -16,8 +16,16 @@ function isUrl(s: string): boolean {
   return /^https?:\/\//i.test(s.trim());
 }
 
+function targetWordCount(sourceLength: number): number {
+  if (sourceLength < 500) return 400;
+  if (sourceLength < 2000) return 600;
+  if (sourceLength < 5000) return 900;
+  if (sourceLength < 10000) return 1200;
+  return 1600;
+}
+
 export async function POST(request: NextRequest) {
-  const { source, perspective } = await request.json();
+  const { source, perspective, category } = await request.json();
 
   if (!source?.trim()) {
     return NextResponse.json({ error: "source is required" }, { status: 400 });
@@ -47,6 +55,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const minWords = targetWordCount(sourceText.length);
   const prompt = `You are writing a blog post for futureCreator blog. Follow these STRICT rules:
 
 1. Write in Korean informal style (평어체): use "~했다", "~이다" endings. NEVER use "입니다", "습니다".
@@ -57,6 +66,7 @@ export async function POST(request: NextRequest) {
 6. Do NOT use self-introduction phrases like "14년차", "클라우드 엔지니어로서".
 7. Title must have no colons (:). Keep it concise but descriptive.
 8. Generate 3-5 relevant tags in English (e.g. "cloud", "aws", "kubernetes"). Tags must be lowercase English words or phrases, never Korean.
+9. Write a thorough, detailed post of at least ${minWords} words. Cover the topic in depth with multiple paragraphs — do NOT write a brief summary.
 
 SOURCE CONTENT (the topic):
 ${sourceText}
@@ -81,7 +91,7 @@ CRITICAL: In the "content" field, use actual \\n escape sequences for ALL line b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" },
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 8192 },
         }),
         signal: AbortSignal.timeout(300000),
       }
@@ -104,7 +114,7 @@ CRITICAL: In the "content" field, use actual \\n escape sequences for ALL line b
     const post = createPost(hexoPath, {
       title,
       tags: Array.isArray(tags) ? tags : [],
-      categories: ["Reviews"],
+      categories: [category || "AI"],
       draft: true,
       content,
     });

@@ -30,9 +30,10 @@ export async function POST(request: NextRequest) {
 
     const gaPropertyId = String(body.gaPropertyId || "").trim() || undefined;
     const gaServiceAccountPath = String(body.gaServiceAccountPath || "").trim() || undefined;
+    const gscSiteUrl = String(body.gscSiteUrl || "").trim() || undefined;
 
-    saveSettings({ hexoPath, gaPropertyId, gaServiceAccountPath });
-    return NextResponse.json({ success: true, hexoPath, gaPropertyId, gaServiceAccountPath });
+    saveSettings({ hexoPath, gaPropertyId, gaServiceAccountPath, gscSiteUrl });
+    return NextResponse.json({ success: true, hexoPath, gaPropertyId, gaServiceAccountPath, gscSiteUrl });
   } catch (err) {
     return NextResponse.json(
       { error: String(err) },

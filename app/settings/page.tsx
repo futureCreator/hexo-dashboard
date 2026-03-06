@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [hexoPath, setHexoPath] = useState("");
   const [gaPropertyId, setGaPropertyId] = useState("");
   const [gaServiceAccountPath, setGaServiceAccountPath] = useState("");
+  const [gscSiteUrl, setGscSiteUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export default function SettingsPage() {
         if (data.hexoPath) setHexoPath(data.hexoPath);
         if (data.gaPropertyId) setGaPropertyId(data.gaPropertyId);
         if (data.gaServiceAccountPath) setGaServiceAccountPath(data.gaServiceAccountPath);
+        if (data.gscSiteUrl) setGscSiteUrl(data.gscSiteUrl);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -48,6 +50,7 @@ export default function SettingsPage() {
           hexoPath: hexoPath.trim(),
           gaPropertyId: gaPropertyId.trim(),
           gaServiceAccountPath: gaServiceAccountPath.trim(),
+          gscSiteUrl: gscSiteUrl.trim(),
         }),
       });
       const data = await res.json();
@@ -240,10 +243,10 @@ export default function SettingsPage() {
         >
           <Card className="mt-6 p-8">
             <h2 className="text-sm font-semibold text-[var(--foreground)] mb-1">
-              Google Analytics
+              Google Analytics &amp; Search Console
             </h2>
             <p className="text-xs text-[var(--muted-foreground)] mb-5">
-              Connect your GA4 property to view analytics on the{" "}
+              Connect your GA4 property and Search Console site to view analytics on the{" "}
               <Link href="/analytics" className="text-[var(--accent)] hover:underline">Analytics page</Link>.{" "}
               Property ID는 <code className="font-mono bg-[var(--muted)] px-1.5 py-0.5 rounded text-[0.7rem]">G-XXXXXXXXXX</code>가 아닌 관리 → 속성 설정의 숫자 ID입니다.
             </p>
@@ -285,6 +288,28 @@ export default function SettingsPage() {
                   Create a service account in Google Cloud Console, grant it the{" "}
                   <code className="font-mono bg-[var(--muted)] px-1.5 py-0.5 rounded text-[0.7rem]">Viewer</code>{" "}
                   role on your GA4 property, then download the JSON key.
+                </p>
+              </div>
+              <div>
+                <label
+                  htmlFor="gscSiteUrl"
+                  className="block text-sm font-medium text-[var(--foreground)] mb-2"
+                >
+                  Search Console Site URL
+                </label>
+                <input
+                  id="gscSiteUrl"
+                  type="text"
+                  value={gscSiteUrl}
+                  onChange={(e) => setGscSiteUrl(e.target.value)}
+                  placeholder="https://your-blog.com or sc-domain:your-blog.com"
+                  disabled={loading}
+                  className="w-full h-12 px-4 rounded-xl border border-[var(--border)] bg-transparent text-[var(--foreground)] text-sm font-mono placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:border-transparent transition-all duration-200 disabled:opacity-60"
+                />
+                <p className="text-xs text-[var(--muted-foreground)] mt-2">
+                  Search Console에 등록된 속성 URL. 서비스 계정 이메일을 GSC 속성의{" "}
+                  <code className="font-mono bg-[var(--muted)] px-1.5 py-0.5 rounded text-[0.7rem]">사용자 및 권한</code>에 추가하고,{" "}
+                  Search Console API를 GCP에서 활성화해야 합니다.
                 </p>
               </div>
             </div>

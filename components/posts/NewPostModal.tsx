@@ -110,6 +110,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
   // AI mode state
   const [source, setSource] = useState("");
   const [perspective, setPerspective] = useState("");
+  const [aiCategory, setAiCategory] = useState("AI");
   const [isGenerating, setIsGenerating] = useState(false);
   const [genStep, setGenStep] = useState(0);
 
@@ -129,6 +130,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
       setIsSubmitting(false);
       setSource("");
       setPerspective("");
+      setAiCategory("AI");
       setIsGenerating(false);
       setGenStep(0);
       setTimeout(() => sourceRef.current?.focus(), 50);
@@ -197,7 +199,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
       const res = await fetch("/api/ai-write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: source.trim(), perspective: perspective.trim() }),
+        body: JSON.stringify({ source: source.trim(), perspective: perspective.trim(), category: aiCategory }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -395,10 +397,31 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                       />
                     </div>
 
-                    {/* Fixed metadata notice */}
+                    {/* Category selector */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                        Category
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {["AI", "Blog", "Engineering", "Cloud", "Insight"].map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setAiCategory(cat)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+                              aiCategory === cat
+                                ? "border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]"
+                                : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]/30"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Metadata notice */}
                     <div className="flex gap-3 text-xs text-[var(--muted-foreground)] bg-[var(--accent-subtle)] rounded-lg px-3 py-2.5">
-                      <span>Category: <span className="text-[var(--foreground)]">Reviews</span></span>
-                      <span>·</span>
                       <span>Tags: <span className="text-[var(--foreground)]">auto</span></span>
                       <span>·</span>
                       <span>Saved as: <span className="text-[var(--foreground)]">draft</span></span>

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "@/components/ui/Button";
+import AIToolbar from "@/components/posts/AIToolbar";
 
 interface EditModalProps {
   isOpen: boolean;
@@ -217,6 +218,15 @@ export default function EditModal({
                     <p className="text-sm text-red-500">{error}</p>
                   </div>
                 ) : (
+                  <>
+                  <AIToolbar
+                    textareaRef={textareaRef}
+                    content={content}
+                    onApply={(newContent) => {
+                      setContent(newContent);
+                      requestAnimationFrame(() => textareaRef.current?.focus());
+                    }}
+                  />
                   <textarea
                     ref={textareaRef}
                     value={content}
@@ -238,13 +248,14 @@ export default function EditModal({
                     className="w-full h-full resize-none p-5 font-kopub text-sm leading-relaxed bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none"
                     style={{ tabSize: 2 }}
                   />
+                  </>
                 )}
               </div>
 
-              {/* Footer hint */}
+              {/* Footer */}
               <div className="px-5 py-2 border-t border-[var(--border)] shrink-0 flex items-center justify-end">
                 <span className="text-xs text-[var(--muted-foreground)]">
-                  ⌘S Save · Esc Close
+                  ⌘S Save · Esc Close · 텍스트 드래그로 AI 편집
                 </span>
               </div>
             </div>

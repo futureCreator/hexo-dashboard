@@ -268,9 +268,9 @@ export default function ContributionHeatmap({ posts }: Props) {
 
         {/* Streak stats */}
         <div className="flex flex-col gap-3 w-[88px] pl-2 border-l border-[var(--border)]">
-          <StreakStat label="Current streak" value={currentStreak} unit="days" highlight={currentStreak > 0} />
-          <StreakStat label="Longest streak" value={longestStreak} unit="days" />
-          <StreakStat label="Posts this year" value={totalPosts} unit="posts" />
+          <StreakStat label="Current" value={currentStreak} unit="days" highlight={currentStreak > 0} />
+          <StreakStat label="Longest" value={longestStreak} unit="days" />
+          <StreakStat label="This year" value={totalPosts} unit="posts" />
         </div>
 
         {/* Tooltip */}
