@@ -12,7 +12,7 @@ function createClient() {
   return { client, propertyId: settings.gaPropertyId };
 }
 
-export async function getAnalyticsSummary(days: 7 | 30) {
+export async function getAnalyticsSummary(days: number) {
   const { client, propertyId } = createClient();
   const [response] = await client.runReport({
     property: `properties/${propertyId}`,
@@ -35,7 +35,7 @@ export async function getAnalyticsSummary(days: 7 | 30) {
   };
 }
 
-export async function getDailyTrend(days: 7 | 30) {
+export async function getDailyTrend(days: number) {
   const { client, propertyId } = createClient();
   const [response] = await client.runReport({
     property: `properties/${propertyId}`,
@@ -52,7 +52,7 @@ export async function getDailyTrend(days: 7 | 30) {
   }));
 }
 
-export async function getTopPages(days: 7 | 30) {
+export async function getTopPages(days: number) {
   const { client, propertyId } = createClient();
   const [response] = await client.runReport({
     property: `properties/${propertyId}`,

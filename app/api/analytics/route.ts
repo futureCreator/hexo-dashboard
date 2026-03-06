@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
   }
 
   const periodParam = request.nextUrl.searchParams.get("period");
-  const days = periodParam === "30" ? 30 : 7;
+  const parsed = Number(periodParam);
+  const days = [7, 14, 30, 90].includes(parsed) ? parsed : 7;
 
   try {
     const [summary, trend, rawTopPages] = await Promise.all([

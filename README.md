@@ -54,6 +54,11 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.13 - 2026-03-07
+- Extended analytics period selector from 2 options (7/30 days) to 4 options: **7, 14, 30, 90 days** — for both Google Analytics and Search Console tabs
+- API routes now accept all four period values with proper validation (falls back to 7 days for unknown values)
+- Simplified chart section headings (removed redundant "last N days" suffix)
+
 ### v0.1.12 - 2026-03-07
 - Added **Home dashboard** — overview page with stat cards (total, published, drafts, written today), recent posts list, quick action links, and site info (URL, last generated, most recent post)
 - Added **Home** nav item to sidebar with house icon; fixed active-state detection for root route

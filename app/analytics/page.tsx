@@ -119,13 +119,13 @@ function CustomTooltip(props: TooltipProps<number, string>) {
 
 export default function AnalyticsPage() {
   const { resolvedTheme } = useTheme();
-  const [period, setPeriod] = useState<7 | 30>(7);
+  const [period, setPeriod] = useState<7 | 14 | 30 | 90>(7);
   const [tab, setTab] = useState<"ga" | "gsc">("ga");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [gscData, setGscData] = useState<GscData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async (days: 7 | 30) => {
+  const fetchData = useCallback(async (days: 7 | 14 | 30 | 90) => {
     setLoading(true);
     try {
       const [gaRes, gscRes] = await Promise.all([
@@ -181,7 +181,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
             {/* Period toggle */}
             <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)]">
-              {([7, 30] as const).map((d) => (
+              {([7, 14, 30, 90] as const).map((d) => (
                 <button
                   key={d}
                   onClick={() => setPeriod(d)}
@@ -354,7 +354,7 @@ export default function AnalyticsPage() {
               >
                 <Card className="p-6">
                   <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
-                    Daily Trend — last {period} days
+                    Daily Trends
                   </h2>
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart
@@ -418,7 +418,7 @@ export default function AnalyticsPage() {
               >
                 <Card className="p-6">
                   <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
-                    Top Pages — last {period} days
+                    Top Pages
                   </h2>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -616,7 +616,7 @@ export default function AnalyticsPage() {
               >
                 <Card className="p-6">
                   <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
-                    Top Pages — last {period} days
+                    Top Pages
                   </h2>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">

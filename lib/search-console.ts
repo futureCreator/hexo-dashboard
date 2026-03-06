@@ -20,7 +20,7 @@ function toIsoDate(daysAgo: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export async function getGscSummary(days: 7 | 30) {
+export async function getGscSummary(days: number) {
   const { client, siteUrl } = createClient();
   const res = await client.searchanalytics.query({
     siteUrl,
@@ -39,7 +39,7 @@ export async function getGscSummary(days: 7 | 30) {
   };
 }
 
-export async function getGscDailyTrend(days: 7 | 30) {
+export async function getGscDailyTrend(days: number) {
   const { client, siteUrl } = createClient();
   const res = await client.searchanalytics.query({
     siteUrl,
@@ -57,7 +57,7 @@ export async function getGscDailyTrend(days: 7 | 30) {
   }));
 }
 
-export async function getGscTopQueries(days: 7 | 30) {
+export async function getGscTopQueries(days: number) {
   const { client, siteUrl } = createClient();
   const res = await client.searchanalytics.query({
     siteUrl,
@@ -77,7 +77,7 @@ export async function getGscTopQueries(days: 7 | 30) {
   }));
 }
 
-export async function getGscTopPages(days: 7 | 30) {
+export async function getGscTopPages(days: number) {
   const { client, siteUrl } = createClient();
   const res = await client.searchanalytics.query({
     siteUrl,
