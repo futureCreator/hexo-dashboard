@@ -54,6 +54,9 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.15 - 2026-03-07
+- Increased recent posts display on Home dashboard from 6 to 8
+
 ### v0.1.14 - 2026-03-07
 - Enhanced **Home dashboard** with top categories, top tags, and 12-month activity charts
 - Added `HomeNewPostButton` and `MonthlyBarChart` components for better home page organization

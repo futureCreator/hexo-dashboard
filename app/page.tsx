@@ -31,7 +31,7 @@ async function getDashboardData() {
     return localStr === todayStr;
   });
 
-  const recentPosts = posts.slice(0, 6);
+  const recentPosts = posts.slice(0, 8);
 
   // Top categories
   const categoryCountMap: Record<string, number> = {};
@@ -329,55 +329,6 @@ export default async function HomePage() {
 
               {/* Right column */}
               <div className="flex flex-col gap-4">
-                {/* Quick actions */}
-                <div>
-                  <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Quick Actions</h2>
-                  <div className="flex flex-col gap-2">
-                    <Link
-                      href="/posts"
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)] hover:border-[var(--accent)]/30 transition-all duration-200 group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center text-[var(--accent)]">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-medium text-[var(--foreground)]">Manage Posts</span>
-                      <svg className="w-4 h-4 text-[var(--muted-foreground)] ml-auto group-hover:text-[var(--foreground)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                    <Link
-                      href="/pages"
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)] hover:border-[var(--accent)]/30 transition-all duration-200 group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[var(--muted)] flex items-center justify-center text-[var(--muted-foreground)]">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-medium text-[var(--foreground)]">Manage Pages</span>
-                      <svg className="w-4 h-4 text-[var(--muted-foreground)] ml-auto group-hover:text-[var(--foreground)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                    <Link
-                      href="/analytics"
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)] hover:border-[var(--accent)]/30 transition-all duration-200 group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[var(--muted)] flex items-center justify-center text-[var(--muted-foreground)]">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-medium text-[var(--foreground)]">Analytics</span>
-                      <svg className="w-4 h-4 text-[var(--muted-foreground)] ml-auto group-hover:text-[var(--foreground)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  </div>
-                </div>
-
                 {/* Site info */}
                 <div>
                   <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Site Info</h2>
