@@ -59,14 +59,19 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
     };
   }, [refreshPosts]);
 
-  // "/" key focuses search
+  // "/" key focuses search, "n" key opens new post modal
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "/") return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      e.preventDefault();
-      searchRef.current?.focus();
+      if ((e.target as HTMLElement).isContentEditable) return;
+      if (e.key === "/") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setNewPostModalOpen(true);
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

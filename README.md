@@ -54,6 +54,18 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.16 - 2026-03-07
+- Replaced plain `<textarea>` in `EditModal` with a **CodeMirror** editor (`CodeEditor` component) — syntax highlighting, proper Tab handling, and CodeMirror selection API for AI toolbar
+- Added **drag-and-drop image upload** in the editor — drop an image to upload via `/api/media/upload` and auto-insert the Markdown image tag
+- Added **Media** page and `/media` nav item for browsing uploaded images
+- Added **콘텐츠 통계** (Content Stats) tab in Analytics — total posts/words/reading time, avg word count, monthly avg word length bar chart, and monthly detail table
+- Added **AI Writing Coach** card on the Home dashboard
+- AI Write API now appends a **related posts** section (tag + title scored) to generated content
+- Added `n`/`N` keyboard shortcut on Posts page to open the New Post modal
+- Extended New Post reference-post search to match post **content** in addition to title
+- Changed default UI font from Inter to **Noto Sans KR**
+- Removed PWA support (`@ducanh2912/next-pwa`) and `app/manifest.ts`
+
 ### v0.1.15 - 2026-03-07
 - Increased recent posts display on Home dashboard from 6 to 8
 

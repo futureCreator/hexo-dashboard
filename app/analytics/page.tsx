@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -88,6 +90,22 @@ interface GscData {
   error?: string;
 }
 
+interface ContentMonthRow {
+  month: string;
+  avgWords: number;
+  postCount: number;
+}
+
+interface ContentStatsData {
+  postCount: number;
+  totalWords: number;
+  totalChars: number;
+  totalReadingTime: number;
+  avgWordCount: number;
+  monthlyTrend: ContentMonthRow[];
+}
+
+
 function formatDate(raw: string) {
   // raw: "YYYYMMDD"
   if (raw.length !== 8) return raw;
@@ -120,9 +138,10 @@ function CustomTooltip(props: TooltipProps<number, string>) {
 export default function AnalyticsPage() {
   const { resolvedTheme } = useTheme();
   const [period, setPeriod] = useState<7 | 14 | 30 | 90>(7);
-  const [tab, setTab] = useState<"ga" | "gsc">("ga");
+  const [tab, setTab] = useState<"ga" | "gsc" | "content">("ga");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [gscData, setGscData] = useState<GscData | null>(null);
+  const [contentStats, setContentStats] = useState<ContentStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async (days: 7 | 14 | 30 | 90) => {
@@ -144,7 +163,15 @@ export default function AnalyticsPage() {
     fetchData(period);
   }, [period, fetchData]);
 
-  // Chart color tokens resolved from CSS vars
+  useEffect(() => {
+    if (tab !== "content" || contentStats) return;
+    fetch("/api/content-stats")
+      .then((r) => r.json())
+      .then(setContentStats)
+      .catch(() => {});
+  }, [tab, contentStats]);
+
+// Chart color tokens resolved from CSS vars
   const accentColor = resolvedTheme === "dark" ? "#5E6AD2" : "#0052FF";
   const accentSecondary = resolvedTheme === "dark" ? "#7B8FE8" : "#4F87FF";
   const mutedColor = resolvedTheme === "dark" ? "#3a3a4a" : "#e5e7eb";
@@ -179,8 +206,8 @@ export default function AnalyticsPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
-            {/* Period toggle */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)]">
+            {/* Period toggle — hidden on content tab */}
+            {tab !== "content" && <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--muted)]">
               {([7, 14, 30, 90] as const).map((d) => (
                 <button
                   key={d}
@@ -194,7 +221,7 @@ export default function AnalyticsPage() {
                   {d}d
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
         </motion.div>
 
@@ -209,6 +236,7 @@ export default function AnalyticsPage() {
             [
               { key: "ga", label: "Google Analytics" },
               { key: "gsc", label: "Search Console" },
+              { key: "content", label: "콘텐츠 통계" },
             ] as const
           ).map(({ key, label }) => (
             <button
@@ -472,6 +500,166 @@ export default function AnalyticsPage() {
               <p className="text-sm text-red-500 font-mono">{gscData.error}</p>
             </Card>
           </motion.div>
+        )}
+
+        {/* Content Stats */}
+        {tab === "content" && (
+          <div className="space-y-6">
+            {!contentStats && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <Card key={i} className="p-5">
+                      <Skeleton className="h-4 w-20 mb-3" />
+                      <Skeleton className="h-8 w-24" />
+                    </Card>
+                  ))}
+                </div>
+                <Card className="p-6">
+                  <Skeleton className="h-5 w-32 mb-4" />
+                  <Skeleton className="h-48 w-full" />
+                </Card>
+              </div>
+            )}
+
+            {contentStats && (
+              <>
+                {/* Summary stat cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: "총 글 수", value: contentStats.postCount.toLocaleString(), sub: "published" },
+                    { label: "총 단어 수", value: contentStats.totalWords.toLocaleString(), sub: "words" },
+                    { label: "총 읽기 시간", value: `${contentStats.totalReadingTime.toLocaleString()}분`, sub: "min read" },
+                    { label: "글 평균 길이", value: contentStats.avgWordCount.toLocaleString(), sub: "words/post" },
+                  ].map((card, i) => (
+                    <motion.div
+                      key={card.label}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, ease: easeOut, delay: 0.05 + i * 0.05 }}
+                    >
+                      <Card className="p-5">
+                        <p className="text-xs text-[var(--muted-foreground)] mb-2">{card.label}</p>
+                        <p className="text-2xl font-semibold text-[var(--foreground)] tabular-nums">
+                          {card.value}
+                        </p>
+                        <p className="text-xs text-[var(--muted-foreground)] mt-1">{card.sub}</p>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Monthly avg word count chart */}
+                {contentStats.monthlyTrend.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: easeOut, delay: 0.25 }}
+                  >
+                    <Card className="p-6">
+                      <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
+                        월별 평균 글 길이 추세
+                      </h2>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart
+                          data={contentStats.monthlyTrend}
+                          margin={{ top: 4, right: 4, bottom: 0, left: -20 }}
+                        >
+                          <CartesianGrid stroke={mutedColor} strokeDasharray="3 3" vertical={false} />
+                          <XAxis
+                            dataKey="month"
+                            tick={{ fontSize: 11, fill: mutedFg }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 11, fill: mutedFg }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <Tooltip
+                            content={(props) => {
+                              const { active, payload, label } = props as unknown as {
+                                active?: boolean;
+                                payload?: { value: number }[];
+                                label?: string;
+                              };
+                              if (!active || !payload?.length) return null;
+                              const row = contentStats.monthlyTrend.find((r) => r.month === label);
+                              return (
+                                <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-lg text-xs">
+                                  <p className="text-[var(--muted-foreground)] mb-1">{label}</p>
+                                  <p style={{ color: accentColor }} className="font-medium">
+                                    평균 {payload[0].value.toLocaleString()}자
+                                  </p>
+                                  {row && (
+                                    <p className="text-[var(--muted-foreground)]">
+                                      글 {row.postCount}편
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            }}
+                          />
+                          <Bar
+                            dataKey="avgWords"
+                            name="평균 단어"
+                            fill={accentColor}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={40}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                      <div className="flex items-center gap-5 mt-4">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: accentColor, display: "inline-block" }} />
+                          <span className="text-xs text-[var(--muted-foreground)]">월별 평균 단어 수</span>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                )}
+
+                {/* Monthly detail table */}
+                {contentStats.monthlyTrend.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: easeOut, delay: 0.35 }}
+                  >
+                    <Card className="p-6">
+                      <h2 className="text-sm font-semibold text-[var(--foreground)] mb-5">
+                        월별 상세
+                      </h2>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-[var(--border)]">
+                              <th className="text-left py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">월</th>
+                              <th className="text-right py-2 pr-4 text-xs font-medium text-[var(--muted-foreground)]">글 수</th>
+                              <th className="text-right py-2 text-xs font-medium text-[var(--muted-foreground)]">평균 단어 수</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...contentStats.monthlyTrend].reverse().map((row) => (
+                              <tr
+                                key={row.month}
+                                className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)] transition-colors duration-150"
+                              >
+                                <td className="py-2.5 pr-4 text-xs font-mono text-[var(--foreground)]">{row.month}</td>
+                                <td className="py-2.5 pr-4 text-right text-xs tabular-nums text-[var(--muted-foreground)]">{row.postCount}</td>
+                                <td className="py-2.5 text-right text-xs tabular-nums text-[var(--foreground)]">{row.avgWords.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+                  </motion.div>
+                )}
+              </>
+            )}
+          </div>
         )}
 
         {/* GSC Data */}

@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import SectionLabel from "@/components/ui/SectionLabel";
 import HomeNewPostButton from "@/components/home/HomeNewPostButton";
 import MonthlyBarChart from "@/components/home/MonthlyBarChart";
+import WritingCoachCard from "@/components/home/WritingCoachCard";
 import ContributionHeatmap from "@/components/posts/ContributionHeatmap";
 import { loadSettings } from "@/lib/settings";
 import { readPosts, hexoPathValid, getSiteConfig } from "@/lib/hexo";
@@ -273,8 +274,11 @@ export default async function HomePage() {
               <MonthlyBarChart data={data.monthlyCounts} />
             </div>
 
+            {/* AI Writing Coach */}
+            <WritingCoachCard />
+
             {/* Main content grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
               {/* Recent posts */}
               <div className="lg:col-span-2">
                 <div className="flex items-center justify-between mb-3">

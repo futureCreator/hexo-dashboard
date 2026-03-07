@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import { loadSettings } from "@/lib/settings";
-import { createPost, hexoPathValid } from "@/lib/hexo";
+import { createPost, hexoPathValid, readPosts, getSiteConfig, type HexoPost } from "@/lib/hexo";
 
 function stripHtml(html: string): string {
   return html
@@ -15,6 +15,37 @@ function stripHtml(html: string): string {
 
 function isUrl(s: string): boolean {
   return /^https?:\/\//i.test(s.trim());
+}
+
+function findRelatedPosts(posts: HexoPost[], newTags: string[], newTitle: string, count: number): HexoPost[] {
+  const lowerNewTags = newTags.map((t) => t.toLowerCase());
+  const titleWords = newTitle.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+
+  const scored = posts.map((post) => {
+    let score = 0;
+    for (const tag of post.tags) {
+      if (lowerNewTags.includes(tag.toLowerCase())) score += 3;
+    }
+    const candidateTitle = post.title.toLowerCase();
+    for (const word of titleWords) {
+      if (candidateTitle.includes(word)) score += 1;
+    }
+    if (post.abbrlink) score += 0.1;
+    return { post, score };
+  });
+
+  return scored
+    .filter(({ score, post }) => score > 0 && post.abbrlink)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count)
+    .map(({ post }) => post);
+}
+
+function buildRelatedSection(posts: HexoPost[], siteUrl: string): string {
+  if (posts.length === 0) return "";
+  const base = siteUrl.replace(/\/+$/, "");
+  const links = posts.map((p) => `- [${p.title}](${base}/posts/${p.abbrlink}/)`);
+  return `---\n\n관련 글\n\n${links.join("\n")}`;
 }
 
 function targetWordCount(sourceLength: number): number {
@@ -146,7 +177,15 @@ CRITICAL: In the "content" field, use actual \\n escape sequences for ALL line b
     }
 
     const generated = JSON.parse(text) as { title: string; content: string; tags: string[] };
-    const { title, content, tags } = generated;
+    const { title, tags } = generated;
+    let { content } = generated;
+
+    // Append related posts section
+    const existingPosts = readPosts(hexoPath);
+    const siteConfig = getSiteConfig(hexoPath);
+    const relatedPosts = findRelatedPosts(existingPosts, Array.isArray(tags) ? tags : [], title, 3);
+    const relatedSection = buildRelatedSection(relatedPosts, siteConfig.url);
+    if (relatedSection) content = `${content}\n\n${relatedSection}`;
 
     const post = createPost(hexoPath, {
       title,

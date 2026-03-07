@@ -11,6 +11,7 @@ export interface HexoPost {
   categories: string[];
   draft: boolean;
   excerpt: string;
+  content: string;
   abbrlink?: number;
 }
 
@@ -87,7 +88,7 @@ export function readPosts(hexoPath: string): HexoPost[] {
 function parsePost(filepath: string, filename: string, isDraftsFolder: boolean): HexoPost {
   try {
     const raw = fs.readFileSync(filepath, "utf-8");
-    const { data, excerpt } = matter(raw, { excerpt: true });
+    const { data, excerpt, content } = matter(raw, { excerpt: true });
 
     const draft =
       isDraftsFolder ||
@@ -119,6 +120,7 @@ function parsePost(filepath: string, filename: string, isDraftsFolder: boolean):
       categories,
       draft,
       excerpt: excerpt || "",
+      content: content || "",
       abbrlink: typeof data.abbrlink === "number" ? data.abbrlink : undefined,
     };
   } catch {
@@ -131,6 +133,7 @@ function parsePost(filepath: string, filename: string, isDraftsFolder: boolean):
       categories: [],
       draft: isDraftsFolder,
       excerpt: "",
+      content: "",
     };
   }
 }

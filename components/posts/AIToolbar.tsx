@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { EditorView } from "@codemirror/view";
 
 type Action = "rewrite" | "expand" | "shorten" | "fix-grammar";
 
@@ -21,38 +22,37 @@ interface SelectionState {
 }
 
 interface AIToolbarProps {
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  editorViewRef: React.RefObject<EditorView | null>;
   content: string;
   onApply: (newContent: string) => void;
 }
 
-export default function AIToolbar({ textareaRef, content, onApply }: AIToolbarProps) {
+export default function AIToolbar({ editorViewRef, content, onApply }: AIToolbarProps) {
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Detect text selection on mouseup inside textarea
+  // Detect text selection on mouseup — listen globally so timing of editor
+  // mount doesn't matter; check the CodeMirror selection state on each event.
   useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
     function onMouseUp(e: MouseEvent) {
       setTimeout(() => {
-        const el = textareaRef.current;
-        if (!el) return;
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        if (start === end) return;
-        const text = el.value.substring(start, end);
-        setSelection({ text, start, end, x: e.clientX, y: e.clientY });
+        const view = editorViewRef.current;
+        if (!view) return;
+        const sel = view.state.selection.main;
+        if (sel.empty) return;
+        const text = view.state.sliceDoc(sel.from, sel.to);
+        setSelection({ text, start: sel.from, end: sel.to, x: e.clientX, y: e.clientY });
         setResult(null);
       }, 10);
     }
 
-    textarea.addEventListener("mouseup", onMouseUp);
-    return () => textarea.removeEventListener("mouseup", onMouseUp);
-  }, [textareaRef]);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => document.removeEventListener("mouseup", onMouseUp);
+  // editorViewRef is a stable ref object — intentionally omitted from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close on click outside toolbar (in capture phase to beat backdrop handlers)
   useEffect(() => {

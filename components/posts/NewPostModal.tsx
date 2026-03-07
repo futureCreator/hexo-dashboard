@@ -464,7 +464,11 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                         </div>
                         <div className="max-h-40 overflow-y-auto px-1 pb-1.5">
                           {allPosts
-                            .filter((p) => refSearch === "" || p.title.toLowerCase().includes(refSearch.toLowerCase()))
+                            .filter((p) => {
+                              if (refSearch === "") return true;
+                              const q = refSearch.toLowerCase();
+                              return p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q);
+                            })
                             .slice(0, 30)
                             .map((p) => {
                               const checked = selectedRefs.includes(p.filepath);
@@ -505,7 +509,11 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
                                 </button>
                               );
                             })}
-                          {allPosts.filter((p) => refSearch === "" || p.title.toLowerCase().includes(refSearch.toLowerCase())).length === 0 && (
+                          {allPosts.filter((p) => {
+                            if (refSearch === "") return true;
+                            const q = refSearch.toLowerCase();
+                            return p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q);
+                          }).length === 0 && (
                             <p className="text-xs text-[var(--muted-foreground)] px-2 py-2">No posts found</p>
                           )}
                         </div>

@@ -3,8 +3,11 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { EditorView } from "@codemirror/view";
 import Button from "@/components/ui/Button";
 import AIToolbar from "@/components/posts/AIToolbar";
+import CodeEditor, { CodeEditorHandle } from "@/components/posts/CodeEditor";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
 interface EditModalProps {
   isOpen: boolean;
@@ -23,6 +26,7 @@ export default function EditModal({
   onSaved,
   contentApiBase = "/api/posts/content",
 }: EditModalProps) {
+  const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [content, setContent] = useState("");
   const [original, setOriginal] = useState("");
@@ -30,7 +34,11 @@ export default function EditModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const codeEditorRef = useRef<CodeEditorHandle>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
+  const dragCounterRef = useRef(0);
 
   useEffect(() => {
     setMounted(true);
@@ -55,10 +63,10 @@ export default function EditModal({
       .finally(() => setIsLoading(false));
   }, [isOpen, filepath]);
 
-  // Focus textarea after load
+  // Focus editor after load
   useEffect(() => {
-    if (!isLoading && isOpen && textareaRef.current) {
-      textareaRef.current.focus();
+    if (!isLoading && isOpen) {
+      codeEditorRef.current?.view?.focus();
     }
   }, [isLoading, isOpen]);
 
@@ -87,6 +95,71 @@ export default function EditModal({
   }, [filepath, content, onSaved, onClose]);
 
   const isDirty = content !== original;
+
+  const insertTextAtCursor = useCallback((text: string) => {
+    const view = editorViewRef.current;
+    if (!view) {
+      setContent((prev) => prev + "\n" + text);
+      return;
+    }
+    const { from } = view.state.selection.main;
+    view.dispatch({
+      changes: { from, insert: text },
+      selection: { anchor: from + text.length },
+    });
+    view.focus();
+  }, []);
+
+  const handleEditorDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleEditorDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleEditorDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleEditorDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+
+      const files = Array.from(e.dataTransfer.files).filter((f) =>
+        f.type.startsWith("image/")
+      );
+      if (files.length === 0) return;
+
+      setIsUploading(true);
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        try {
+          const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+          const data = await res.json();
+          if (res.ok && data.relpath) {
+            const alt = data.filename ?? data.relpath;
+            insertTextAtCursor(`![${alt}](/images/${data.relpath})`);
+          }
+        } catch {
+          // silently skip failed uploads
+        }
+      }
+      setIsUploading(false);
+    },
+    [insertTextAtCursor]
+  );
 
   const handleClose = useCallback(() => {
     if (isDirty) {
@@ -187,7 +260,54 @@ export default function EditModal({
               </div>
 
               {/* Body */}
-              <div className="flex-1 min-h-0 relative">
+              <div
+                className="flex-1 min-h-0 relative"
+                onDragEnter={handleEditorDragEnter}
+                onDragLeave={handleEditorDragLeave}
+                onDragOver={handleEditorDragOver}
+                onDrop={handleEditorDrop}
+              >
+                {/* Drag-over overlay */}
+                <AnimatePresence>
+                  {isDragOver && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--accent)]/10 border-2 border-dashed border-[var(--accent)] rounded-b-2xl pointer-events-none"
+                    >
+                      <div className="text-center">
+                        <svg className="w-10 h-10 text-[var(--accent)] mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <p className="text-[var(--accent)] font-medium text-sm">Drop image to insert</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Upload spinner overlay */}
+                <AnimatePresence>
+                  {isUploading && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--card)]/70 backdrop-blur-[2px] pointer-events-none"
+                    >
+                      <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Uploading…
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {isLoading ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
@@ -220,33 +340,19 @@ export default function EditModal({
                 ) : (
                   <>
                   <AIToolbar
-                    textareaRef={textareaRef}
+                    editorViewRef={editorViewRef}
                     content={content}
                     onApply={(newContent) => {
                       setContent(newContent);
-                      requestAnimationFrame(() => textareaRef.current?.focus());
+                      requestAnimationFrame(() => codeEditorRef.current?.view?.focus());
                     }}
                   />
-                  <textarea
-                    ref={textareaRef}
+                  <CodeEditor
+                    ref={codeEditorRef}
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Tab") {
-                        e.preventDefault();
-                        const el = e.currentTarget;
-                        const start = el.selectionStart;
-                        const end = el.selectionEnd;
-                        const next = content.substring(0, start) + "  " + content.substring(end);
-                        setContent(next);
-                        requestAnimationFrame(() => {
-                          el.selectionStart = el.selectionEnd = start + 2;
-                        });
-                      }
-                    }}
-                    spellCheck={false}
-                    className="w-full h-full resize-none p-5 font-kopub text-sm leading-relaxed bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none"
-                    style={{ tabSize: 2 }}
+                    onChange={setContent}
+                    isDark={resolvedTheme === "dark"}
+                    onViewMount={(view) => { editorViewRef.current = view; }}
                   />
                   </>
                 )}
@@ -255,7 +361,7 @@ export default function EditModal({
               {/* Footer */}
               <div className="px-5 py-2 border-t border-[var(--border)] shrink-0 flex items-center justify-end">
                 <span className="text-xs text-[var(--muted-foreground)]">
-                  ⌘S Save · Esc Close · 텍스트 드래그로 AI 편집
+                  ⌘S Save · Esc Close · 텍스트 드래그로 AI 편집 · 이미지 드롭으로 삽입
                 </span>
               </div>
             </div>
