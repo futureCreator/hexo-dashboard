@@ -13,6 +13,7 @@ export interface HexoPost {
   excerpt: string;
   content: string;
   abbrlink?: number;
+  slug?: string;
 }
 
 export interface SiteConfig {
@@ -50,7 +51,22 @@ export function hexoPathValid(hexoPath: string): boolean {
   return fs.existsSync(postsDir);
 }
 
+interface PostsCache {
+  hexoPath: string;
+  posts: HexoPost[];
+}
+
+let postsCache: PostsCache | null = null;
+
+export function invalidatePostsCache(): void {
+  postsCache = null;
+}
+
 export function readPosts(hexoPath: string): HexoPost[] {
+  if (postsCache && postsCache.hexoPath === hexoPath) {
+    return postsCache.posts;
+  }
+
   const posts: HexoPost[] = [];
 
   // Read published posts
@@ -78,11 +94,14 @@ export function readPosts(hexoPath: string): HexoPost[] {
   }
 
   // Also check front matter draft field in _posts
-  return posts.sort((a, b) => {
+  const sorted = posts.sort((a, b) => {
     if (!a.date) return 1;
     if (!b.date) return -1;
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
+
+  postsCache = { hexoPath, posts: sorted };
+  return sorted;
 }
 
 function parsePost(filepath: string, filename: string, isDraftsFolder: boolean): HexoPost {
@@ -122,6 +141,7 @@ function parsePost(filepath: string, filename: string, isDraftsFolder: boolean):
       excerpt: excerpt || "",
       content: content || "",
       abbrlink: typeof data.abbrlink === "number" ? data.abbrlink : undefined,
+      slug: typeof data.slug === "string" && data.slug ? data.slug : undefined,
     };
   } catch {
     return {

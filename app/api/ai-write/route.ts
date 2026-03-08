@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import { loadSettings } from "@/lib/settings";
-import { createPost, hexoPathValid, readPosts, getSiteConfig, type HexoPost } from "@/lib/hexo";
+import { createPost, hexoPathValid, readPosts, type HexoPost } from "@/lib/hexo";
 
 function stripHtml(html: string): string {
   return html
@@ -41,10 +41,9 @@ function findRelatedPosts(posts: HexoPost[], newTags: string[], newTitle: string
     .map(({ post }) => post);
 }
 
-function buildRelatedSection(posts: HexoPost[], siteUrl: string): string {
+function buildRelatedSection(posts: HexoPost[]): string {
   if (posts.length === 0) return "";
-  const base = siteUrl.replace(/\/+$/, "");
-  const links = posts.map((p) => `- [${p.title}](${base}/posts/${p.abbrlink}/)`);
+  const links = posts.map((p) => `- {% post_link ${p.abbrlink} "${p.title}" %}`);
   return `---\n\n관련 글\n\n${links.join("\n")}`;
 }
 
@@ -182,9 +181,8 @@ CRITICAL: In the "content" field, use actual \\n escape sequences for ALL line b
 
     // Append related posts section
     const existingPosts = readPosts(hexoPath);
-    const siteConfig = getSiteConfig(hexoPath);
     const relatedPosts = findRelatedPosts(existingPosts, Array.isArray(tags) ? tags : [], title, 3);
-    const relatedSection = buildRelatedSection(relatedPosts, siteConfig.url);
+    const relatedSection = buildRelatedSection(relatedPosts);
     if (relatedSection) content = `${content}\n\n${relatedSection}`;
 
     const post = createPost(hexoPath, {

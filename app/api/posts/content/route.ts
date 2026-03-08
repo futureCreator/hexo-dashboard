@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import { loadSettings } from "@/lib/settings";
+import { invalidatePostsCache } from "@/lib/hexo";
 
 function guardPath(filepath: string): NextResponse | null {
   if (!filepath || typeof filepath !== "string") {
@@ -40,6 +41,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     fs.writeFileSync(filepath, content, "utf-8");
+    invalidatePostsCache();
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

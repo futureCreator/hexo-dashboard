@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadSettings } from "@/lib/settings";
-import { readPosts, deletePost, togglePostDraft, createPost, hexoPathValid } from "@/lib/hexo";
+import { readPosts, deletePost, togglePostDraft, createPost, hexoPathValid, invalidatePostsCache } from "@/lib/hexo";
 
 export async function GET() {
   const { hexoPath } = loadSettings();
@@ -44,6 +44,7 @@ export async function DELETE(request: NextRequest) {
 
   try {
     deletePost(filepath);
+    invalidatePostsCache();
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json(
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
       categories: Array.isArray(categories) ? categories.filter(Boolean) : [],
       draft: draft === true,
     });
+    invalidatePostsCache();
     return NextResponse.json({ success: true, post }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -95,6 +97,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const updated = togglePostDraft(filepath, hexoPath);
+    invalidatePostsCache();
     return NextResponse.json({ success: true, post: updated });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

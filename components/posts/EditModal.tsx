@@ -5,9 +5,9 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { EditorView } from "@codemirror/view";
 import Button from "@/components/ui/Button";
-import AIToolbar from "@/components/posts/AIToolbar";
 import CodeEditor, { CodeEditorHandle } from "@/components/posts/CodeEditor";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import type { HexoPost } from "@/lib/hexo";
 
 interface EditModalProps {
   isOpen: boolean;
@@ -36,6 +36,11 @@ export default function EditModal({
   const [showConfirm, setShowConfirm] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showPostPicker, setShowPostPicker] = useState(false);
+  const [pickerPosts, setPickerPosts] = useState<HexoPost[]>([]);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const pickerSearchRef = useRef<HTMLInputElement>(null);
   const codeEditorRef = useRef<CodeEditorHandle>(null);
   const editorViewRef = useRef<EditorView | null>(null);
   const dragCounterRef = useRef(0);
@@ -110,6 +115,31 @@ export default function EditModal({
     view.focus();
   }, []);
 
+  const openPostPicker = useCallback(() => {
+    setPickerSearch("");
+    setShowPostPicker(true);
+    setPickerLoading(true);
+    fetch("/api/posts")
+      .then((r) => r.json())
+      .then((data) => setPickerPosts(data.posts ?? []))
+      .catch(() => setPickerPosts([]))
+      .finally(() => {
+        setPickerLoading(false);
+        setTimeout(() => pickerSearchRef.current?.focus(), 50);
+      });
+  }, []);
+
+  const handleInsertPostLink = useCallback(
+    (post: HexoPost) => {
+      const slug = post.abbrlink != null ? String(post.abbrlink) : post.filename.replace(/\.md$/, "");
+      const tag = `{% post_link ${slug} "${post.title}" %}`;
+      insertTextAtCursor(tag);
+      setShowPostPicker(false);
+      setPickerSearch("");
+    },
+    [insertTextAtCursor]
+  );
+
   const handleEditorDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     dragCounterRef.current++;
@@ -177,7 +207,9 @@ export default function EditModal({
         e.preventDefault();
         handleSave();
       } else if (e.key === "Escape") {
-        if (showConfirm) {
+        if (showPostPicker) {
+          setShowPostPicker(false);
+        } else if (showConfirm) {
           setShowConfirm(false);
         } else {
           handleClose();
@@ -186,7 +218,7 @@ export default function EditModal({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, handleSave, handleClose, showConfirm]);
+  }, [isOpen, handleSave, handleClose, showConfirm, showPostPicker]);
 
   if (!mounted) return null;
 
@@ -240,6 +272,17 @@ export default function EditModal({
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <button
+                    onClick={openPostPicker}
+                    disabled={isLoading}
+                    title="관련 글 삽입"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-40 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    관련 글
+                  </button>
                   <Button
                     variant="secondary"
                     size="sm"
@@ -338,15 +381,6 @@ export default function EditModal({
                     <p className="text-sm text-red-500">{error}</p>
                   </div>
                 ) : (
-                  <>
-                  <AIToolbar
-                    editorViewRef={editorViewRef}
-                    content={content}
-                    onApply={(newContent) => {
-                      setContent(newContent);
-                      requestAnimationFrame(() => codeEditorRef.current?.view?.focus());
-                    }}
-                  />
                   <CodeEditor
                     ref={codeEditorRef}
                     value={content}
@@ -354,17 +388,107 @@ export default function EditModal({
                     isDark={resolvedTheme === "dark"}
                     onViewMount={(view) => { editorViewRef.current = view; }}
                   />
-                  </>
                 )}
               </div>
 
               {/* Footer */}
               <div className="px-5 py-2 border-t border-[var(--border)] shrink-0 flex items-center justify-end">
                 <span className="text-xs text-[var(--muted-foreground)]">
-                  ⌘S Save · Esc Close · 텍스트 드래그로 AI 편집 · 이미지 드롭으로 삽입
+                  ⌘S Save · Esc Close · 이미지 드롭으로 삽입
                 </span>
               </div>
             </div>
+
+              {/* Post link picker panel */}
+              <AnimatePresence>
+                {showPostPicker && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 16 }}
+                    transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute inset-x-0 bottom-0 z-10 bg-[var(--card)] border-t border-[var(--border)] rounded-b-2xl shadow-[0_-8px_24px_rgba(0,0,0,0.12)]"
+                    style={{ maxHeight: "55%" }}
+                  >
+                    {/* Picker header */}
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
+                      <svg className="w-4 h-4 text-[var(--accent)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      <input
+                        ref={pickerSearchRef}
+                        type="text"
+                        placeholder="포스트 검색…"
+                        value={pickerSearch}
+                        onChange={(e) => setPickerSearch(e.target.value)}
+                        className="flex-1 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setShowPostPicker(false)}
+                        className="p-1 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Post list */}
+                    <div className="overflow-y-auto" style={{ maxHeight: "calc(55vh - 52px)" }}>
+                      {pickerLoading ? (
+                        <div className="flex items-center justify-center py-10 text-sm text-[var(--muted-foreground)]">
+                          <svg className="w-4 h-4 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Loading…
+                        </div>
+                      ) : (() => {
+                        const q = pickerSearch.toLowerCase();
+                        const filtered = pickerPosts.filter(
+                          (p) =>
+                            !q ||
+                            p.title.toLowerCase().includes(q) ||
+                            p.filename.toLowerCase().includes(q) ||
+                            p.tags.some((t) => t.toLowerCase().includes(q))
+                        );
+                        return filtered.length === 0 ? (
+                          <div className="py-10 text-center text-sm text-[var(--muted-foreground)]">
+                            검색 결과가 없습니다.
+                          </div>
+                        ) : (
+                          filtered.map((post) => (
+                            <button
+                              key={post.filepath}
+                              onClick={() => handleInsertPostLink(post)}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--muted)] transition-colors group"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  {post.draft && (
+                                    <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--muted)]">
+                                      Draft
+                                    </span>
+                                  )}
+                                  <span className="text-sm text-[var(--foreground)] truncate font-medium">
+                                    {post.title}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-[var(--muted-foreground)] font-mono">
+                                  {post.abbrlink != null ? `abbrlink: ${post.abbrlink}` : post.filename}
+                                </span>
+                              </div>
+                              <span className="shrink-0 text-xs text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity font-mono">
+                                삽입 →
+                              </span>
+                            </button>
+                          ))
+                        );
+                      })()}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Unsaved changes confirm overlay */}
               <AnimatePresence>

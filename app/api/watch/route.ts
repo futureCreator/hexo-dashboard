@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import fs from "fs";
 import { loadSettings } from "@/lib/settings";
-import { hexoPathValid, getPostsDir, getDraftsDir } from "@/lib/hexo";
+import { hexoPathValid, getPostsDir, getDraftsDir, invalidatePostsCache } from "@/lib/hexo";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +41,7 @@ export async function GET(_req: NextRequest) {
       const handleChange = () => {
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
+          invalidatePostsCache();
           send("change", JSON.stringify({ ts: Date.now() }));
         }, 300);
       };

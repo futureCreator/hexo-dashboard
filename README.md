@@ -54,6 +54,13 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.17 - 2026-03-08
+- Added **Links** page (`/links`) — interactive force-graph visualization of internal post links (`{% post_link %}` and Markdown links), including broken-link detection; added `react-force-graph-2d` dependency and **Links** nav item in sidebar
+- Added **post link picker** in `EditModal` — toolbar button opens a searchable panel to insert `{% post_link slug "Title" %}` tags at cursor; replaced the previous AIToolbar
+- Added in-memory **posts cache** in `lib/hexo.ts` with `invalidatePostsCache()` — called on file-watch events and all mutating API routes (create/delete/update/content write) to avoid re-scanning disk on every read
+- AI Write route now generates related-post links using `{% post_link %}` tags instead of absolute URLs
+- Added `slug` field to `HexoPost` interface; used when resolving post links in the link graph
+
 ### v0.1.16 - 2026-03-07
 - Replaced plain `<textarea>` in `EditModal` with a **CodeMirror** editor (`CodeEditor` component) — syntax highlighting, proper Tab handling, and CodeMirror selection API for AI toolbar
 - Added **drag-and-drop image upload** in the editor — drop an image to upload via `/api/media/upload` and auto-insert the Markdown image tag
