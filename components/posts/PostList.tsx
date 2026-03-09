@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import PostCard from "./PostCard";
-import Button from "@/components/ui/Button";
+import CleanButton from "./CleanButton";
+import CommitButton from "./CommitButton";
+import DeployButton from "./DeployButton";
 import { useToast } from "@/components/ui/Toast";
 import EditModal from "./EditModal";
 import NewPostModal from "./NewPostModal";
@@ -23,6 +25,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
   const [posts, setPosts] = useState<HexoPost[]>(initialPosts);
   const [filter, setFilter] = useState<FilterType>("all");
   const [query, setQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const searchRef = useRef<HTMLInputElement>(null);
   const [newPostModalOpen, setNewPostModalOpen] = useState(false);
@@ -41,25 +44,20 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
       setPosts(data.posts);
       showToast({ type: "success", message: "Posts synced from disk" });
     } catch {
-      // Ignore network errors during background refresh
+      // ignore
     } finally {
       isRefreshing.current = false;
     }
   }, [showToast]);
 
-  // SSE file watch — auto-refresh when files change externally
   useEffect(() => {
     const es = new EventSource("/api/watch");
     es.addEventListener("connected", () => setWatching(true));
     es.addEventListener("change", refreshPosts);
     es.addEventListener("error", () => setWatching(false));
-    return () => {
-      es.close();
-      setWatching(false);
-    };
+    return () => { es.close(); setWatching(false); };
   }, [refreshPosts]);
 
-  // "/" key focuses search, "n" key opens new post modal
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName;
@@ -125,7 +123,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
     setPendingEditPost(newPost);
   }, []);
 
-  const filterBtns: { key: FilterType; label: string; count: number }[] = [
+  const filterTabs: { key: FilterType; label: string; count: number }[] = [
     { key: "all", label: "All", count: posts.length },
     { key: "published", label: "Published", count: published },
     { key: "draft", label: "Drafts", count: drafts },
@@ -133,110 +131,139 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
 
   return (
     <div>
-      {/* Search + Date filter */}
+      {/* Action buttons row */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.05 }}
-        className="mb-4 flex flex-col sm:flex-row gap-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: easeOut }}
+        className="grid grid-cols-4 sm:flex sm:items-center gap-2 mb-4"
       >
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)] pointer-events-none"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
+        <button
+          onClick={() => setNewPostModalOpen(true)}
+          title="New Post (n)"
+          className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 w-full sm:w-auto rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer shrink-0"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="hidden sm:inline">New Post</span>
+        </button>
+        <CleanButton />
+        <CommitButton />
+        <DeployButton />
+      </motion.div>
+
+      {/* Search Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: easeOut, delay: 0.04 }}
+        className="flex items-center gap-2 mb-3"
+      >
+        {/* Search bar */}
+        <div
+          className={`flex items-center gap-2 flex-1 h-[36px] px-3 rounded-[10px] bg-[var(--muted)] transition-all duration-200 ${
+            isSearchFocused ? "ring-1 ring-[var(--accent)]" : ""
+          }`}
+        >
+          <svg className="w-[15px] h-[15px] text-[var(--muted-foreground)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             ref={searchRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder='Search posts… (press "/" to focus)'
-            className="w-full h-10 pl-10 pr-4 rounded-xl border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+            placeholder="Search posts…"
+            className="flex-1 bg-transparent text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none"
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+              className="shrink-0 w-4 h-4 rounded-full bg-[var(--muted-foreground)]/40 flex items-center justify-center transition-all active:scale-90"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           )}
         </div>
-        <select
-          value={dateRange}
-          onChange={(e) => setDateRange(e.target.value as DateRange)}
-          className="h-10 px-3 pr-8 rounded-xl border border-[var(--border)] bg-[var(--card)] text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 cursor-pointer appearance-none"
-          style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
-        >
-          <option value="all">All time</option>
-          <option value="this-month">This month</option>
-          <option value="this-year">This year</option>
-        </select>
+
+        {/* Cancel (when searching) — mobile only */}
+        <AnimatePresence>
+          {query && (
+            <motion.button
+              initial={{ opacity: 0, x: 8, width: 0 }}
+              animate={{ opacity: 1, x: 0, width: "auto" }}
+              exit={{ opacity: 0, x: 8, width: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setQuery("")}
+              className="md:hidden text-[var(--accent)] text-[15px] font-medium whitespace-nowrap shrink-0"
+            >
+              Cancel
+            </motion.button>
+          )}
+        </AnimatePresence>
       </motion.div>
 
-      {/* Filter tabs + post count */}
+      {/* Filters row: segmented control + date + live + count */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="flex flex-wrap items-center gap-2 mb-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: easeOut, delay: 0.05 }}
+        className="flex items-center gap-2 mb-5 flex-wrap"
       >
-        {filterBtns.map(({ key, label, count }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-              transition-all duration-200 cursor-pointer
-              ${
-                filter === key
-                  ? "bg-[rgba(0,82,255,0.08)] text-[var(--accent)] border border-[rgba(0,82,255,0.2)]"
-                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] border border-transparent"
-              }
-            `}
-          >
-            {label}
-            <span
-              className={`
-                text-xs px-1.5 py-0.5 rounded-full font-mono
-                ${
-                  filter === key
-                    ? "bg-[var(--accent)] text-white"
-                    : "bg-[var(--muted)] text-[var(--muted-foreground)]"
-                }
-              `}
+        {/* iOS segmented control */}
+        <div className="segmented-control" style={{ width: "fit-content" }}>
+          {filterTabs.map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`segmented-control-item min-w-[64px] px-3 gap-1.5 ${filter === key ? "active" : ""}`}
             >
-              {count}
-            </span>
-          </button>
-        ))}
+              {label}
+              <span className={`text-[11px] font-mono px-1 py-px rounded-full leading-none ${
+                filter === key
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-[var(--muted-foreground)]/20 text-[var(--muted-foreground)]"
+              }`}>
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Date filter */}
+        <div className="relative">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value as DateRange)}
+            className="h-[32px] pl-3 pr-7 rounded-[8px] bg-[var(--muted)] text-[13px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] cursor-pointer appearance-none transition-all"
+            style={{
+              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 8px center"
+            }}
+          >
+            <option value="all">All time</option>
+            <option value="this-month">This month</option>
+            <option value="this-year">This year</option>
+          </select>
+        </div>
+
+        {/* Live indicator */}
         <div className="ml-auto flex items-center gap-3">
           {watching && (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-400/80 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-[11px] text-emerald-500 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               live
             </span>
           )}
-          <span className="text-xs text-[var(--muted-foreground)] font-mono">
+          <span className="text-[11px] text-[var(--muted-foreground)] font-mono">
             {filtered.length} post{filtered.length !== 1 ? "s" : ""}
           </span>
-          <Button variant="primary" size="sm" onClick={() => setNewPostModalOpen(true)}>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Post
-          </Button>
         </div>
       </motion.div>
 
@@ -245,37 +272,29 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
           className="py-16 flex flex-col items-center gap-3 text-[var(--muted-foreground)]"
         >
-          <div className="w-12 h-12 rounded-2xl border border-[var(--border)] flex items-center justify-center">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
+          <div className="w-12 h-12 rounded-[14px] border border-[var(--border)] flex items-center justify-center bg-[var(--muted)]">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <p className="text-sm">
-            {query ? `No posts matching "${query}"` : "No posts found."}
+          <p className="text-[15px]">
+            {query ? `No results for "${query}"` : "No posts found."}
           </p>
           {(query || dateRange !== "all") && (
             <button
               onClick={() => { setQuery(""); setDateRange("all"); }}
-              className="text-xs text-[var(--accent)] hover:underline"
+              className="text-[13px] text-[var(--accent)] font-medium"
             >
               Clear filters
             </button>
           )}
         </motion.div>
       ) : (
-        <div className="flex flex-col divide-y divide-[var(--border)]">
+        <div className="rounded-[14px] overflow-hidden bg-[var(--card)] border border-[var(--border)]">
           {filtered.map((post, i) => (
             <PostCard
               key={post.filepath}
@@ -284,6 +303,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
               onUpdated={handleUpdated}
               index={i}
               siteConfig={siteConfig}
+              isLast={i === filtered.length - 1}
             />
           ))}
         </div>

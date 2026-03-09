@@ -32,25 +32,25 @@ export async function GET() {
   const totalWords = postStats.reduce((sum, p) => sum + p.wordCount, 0);
   const totalChars = postStats.reduce((sum, p) => sum + p.charCount, 0);
   const totalReadingTime = postStats.reduce((sum, p) => sum + p.readingTime, 0);
-  const avgWordCount =
-    postStats.length > 0 ? Math.round(totalWords / postStats.length) : 0;
+  const avgCharCount =
+    postStats.length > 0 ? Math.round(totalChars / postStats.length) : 0;
 
   // Monthly trend — last 12 months with data
-  const monthMap: Record<string, { totalWords: number; count: number }> = {};
+  const monthMap: Record<string, { totalChars: number; count: number }> = {};
   for (const p of postStats) {
     if (!p.date) continue;
     const month = p.date.slice(0, 7); // "YYYY-MM"
-    if (!monthMap[month]) monthMap[month] = { totalWords: 0, count: 0 };
-    monthMap[month].totalWords += p.wordCount;
+    if (!monthMap[month]) monthMap[month] = { totalChars: 0, count: 0 };
+    monthMap[month].totalChars += p.charCount;
     monthMap[month].count++;
   }
 
   const monthlyTrend = Object.entries(monthMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-12)
-    .map(([month, { totalWords: tw, count }]) => ({
+    .map(([month, { totalChars: tc, count }]) => ({
       month: month.slice(2), // "YY-MM" for compact display
-      avgWords: Math.round(tw / count),
+      avgChars: Math.round(tc / count),
       postCount: count,
     }));
 
@@ -59,7 +59,7 @@ export async function GET() {
     totalWords,
     totalChars,
     totalReadingTime,
-    avgWordCount,
+    avgCharCount,
     monthlyTrend,
   });
 }

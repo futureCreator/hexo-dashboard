@@ -5,12 +5,19 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "@/components/ui/Button";
 
+interface ReferencedPost {
+  filename: string;
+  title: string;
+}
+
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   title: string;
   onConfirm: () => void;
   onCancel: () => void;
   isDeleting?: boolean;
+  referencedBy?: ReferencedPost[];
+  isCheckingRefs?: boolean;
 }
 
 export default function DeleteConfirmModal({
@@ -19,6 +26,8 @@ export default function DeleteConfirmModal({
   onConfirm,
   onCancel,
   isDeleting = false,
+  referencedBy,
+  isCheckingRefs = false,
 }: DeleteConfirmModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -27,6 +36,8 @@ export default function DeleteConfirmModal({
   }, []);
 
   if (!mounted) return null;
+
+  const hasRefs = referencedBy && referencedBy.length > 0;
 
   return createPortal(
     <AnimatePresence>
@@ -71,13 +82,59 @@ export default function DeleteConfirmModal({
               <h3 className="text-lg font-semibold text-[var(--foreground)] mb-1">
                 Delete Post
               </h3>
-              <p className="text-sm text-[var(--muted-foreground)] mb-6">
+              <p className="text-sm text-[var(--muted-foreground)] mb-4">
                 Are you sure you want to delete{" "}
                 <span className="font-medium text-[var(--foreground)]">
                   &ldquo;{title}&rdquo;
                 </span>
                 ? This action cannot be undone.
               </p>
+
+              {/* Reference warning */}
+              {isCheckingRefs && (
+                <div className="mb-4 flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                  <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  Checking references...
+                </div>
+              )}
+
+              {!isCheckingRefs && hasRefs && (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/30 p-3">
+                  <div className="flex items-start gap-2">
+                    <svg
+                      className="w-4 h-4 text-amber-500 shrink-0 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                      />
+                    </svg>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300 mb-1.5">
+                        {referencedBy.length}개의 포스트에서 이 글을 참조하고 있습니다. 삭제 시 해당 참조도 자동으로 제거됩니다.
+                      </p>
+                      <ul className="space-y-0.5">
+                        {referencedBy.map((ref) => (
+                          <li
+                            key={ref.filename}
+                            className="text-xs text-amber-700 dark:text-amber-400 font-mono truncate"
+                          >
+                            {ref.title}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-3 justify-end">
                 <Button
@@ -92,7 +149,7 @@ export default function DeleteConfirmModal({
                   variant="solid-danger"
                   size="sm"
                   onClick={onConfirm}
-                  disabled={isDeleting}
+                  disabled={isDeleting || isCheckingRefs}
                 >
                   {isDeleting ? "Deleting..." : "Delete"}
                 </Button>

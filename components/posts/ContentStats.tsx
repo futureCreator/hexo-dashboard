@@ -32,7 +32,7 @@ export default function ContentStats({ content }: ContentStatsProps) {
     <div className="relative flex items-center gap-3">
       {/* Word count & reading time */}
       <span className="text-xs text-[var(--muted-foreground)]">
-        {readability.wordCount.toLocaleString()}자
+        {readability.charCount.toLocaleString()}자
       </span>
       <span className="text-[var(--border)]">·</span>
       <span className="text-xs text-[var(--muted-foreground)]">

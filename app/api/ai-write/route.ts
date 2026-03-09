@@ -23,27 +23,37 @@ function findRelatedPosts(posts: HexoPost[], newTags: string[], newTitle: string
 
   const scored = posts.map((post) => {
     let score = 0;
+    let tagMatchCount = 0;
     for (const tag of post.tags) {
-      if (lowerNewTags.includes(tag.toLowerCase())) score += 3;
+      if (lowerNewTags.includes(tag.toLowerCase())) {
+        score += 3;
+        tagMatchCount++;
+      }
     }
     const candidateTitle = post.title.toLowerCase();
     for (const word of titleWords) {
       if (candidateTitle.includes(word)) score += 1;
     }
-    if (post.abbrlink) score += 0.1;
-    return { post, score };
+    return { post, score, tagMatchCount };
   });
 
   return scored
-    .filter(({ score, post }) => score > 0 && post.abbrlink)
-    .sort((a, b) => b.score - a.score)
+    .filter(({ score }) => score >= 3) // 태그 최소 1개 일치 필요
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.tagMatchCount !== a.tagMatchCount) return b.tagMatchCount - a.tagMatchCount;
+      // 동점이면 오래된 글 우선 (최신 글 쏠림 방지)
+      const dateA = a.post.date ? new Date(a.post.date).getTime() : 0;
+      const dateB = b.post.date ? new Date(b.post.date).getTime() : 0;
+      return dateA - dateB;
+    })
     .slice(0, count)
     .map(({ post }) => post);
 }
 
 function buildRelatedSection(posts: HexoPost[]): string {
   if (posts.length === 0) return "";
-  const links = posts.map((p) => `- {% post_link ${p.abbrlink} "${p.title}" %}`);
+  const links = posts.map((p) => `- {% post_link ${p.filename.replace(/\.md$/, "")} "${p.title}" %}`);
   return `---\n\n관련 글\n\n${links.join("\n")}`;
 }
 
@@ -133,8 +143,16 @@ export async function POST(request: NextRequest) {
 8. Generate 3-5 relevant tags in English (e.g. "cloud", "aws", "kubernetes"). Tags must be lowercase English words or phrases, never Korean.
 9. Write a thorough, detailed post of at least ${minWords} words. Cover the topic in depth with multiple paragraphs — do NOT write a brief summary.
 
-SOURCE CONTENT (the topic — may include multiple sources separated by ---):
+SOURCE CONTENT (reference material — may include multiple sources separated by ---):
 ${sourceText}
+
+CRITICAL — SOURCE AUTHORSHIP RULE:
+The source content above was written by OTHER authors, NOT by 동호 (the blog author).
+Any first-person statements in the sources (e.g., "내가 CTO로 일했을 때...", "I spent 5 years building...") are the SOURCE AUTHOR's experiences, not 동호's.
+When referencing such content, frame it as external perspective or reference:
+  WRONG: "내가 CTO로 일했을 때..."
+  RIGHT: "한 글에서 CTO 경험을 소개하며..." or "이 주제에 대해 흥미로운 시각이 있다..."
+Never claim source authors' experiences as 동호's own personal experiences.
 
 MY PERSPECTIVE (incorporate this viewpoint):
 ${perspective?.trim() || "(none provided)"}

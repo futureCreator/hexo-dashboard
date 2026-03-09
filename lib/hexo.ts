@@ -163,6 +163,51 @@ export function deletePost(filepath: string): void {
     return; // Already gone — treat as success
   }
   fs.unlinkSync(filepath);
+  invalidatePostsCache();
+}
+
+export interface PostLinkReference {
+  filepath: string;
+  filename: string;
+  title: string;
+}
+
+export function findPostLinkReferences(hexoPath: string, postSlug: string): PostLinkReference[] {
+  const posts = readPosts(hexoPath);
+  const pattern = new RegExp(`\\{%-?\\s*post_link\\s+${postSlug}[\\s%]`);
+  const refs: PostLinkReference[] = [];
+  for (const post of posts) {
+    try {
+      const raw = fs.readFileSync(post.filepath, "utf-8");
+      if (pattern.test(raw)) {
+        refs.push({ filepath: post.filepath, filename: post.filename, title: post.title });
+      }
+    } catch {
+      // skip unreadable files
+    }
+  }
+  return refs;
+}
+
+export function cleanPostLinkReferences(hexoPath: string, postSlug: string): number {
+  const posts = readPosts(hexoPath);
+  const pattern = new RegExp(`\\{%-?\\s*post_link\\s+${postSlug}[\\s%]`);
+  let count = 0;
+  for (const post of posts) {
+    try {
+      const raw = fs.readFileSync(post.filepath, "utf-8");
+      if (!pattern.test(raw)) continue;
+      const lines = raw.split("\n");
+      const filtered = lines.filter((line) => !pattern.test(line));
+      if (filtered.length < lines.length) {
+        fs.writeFileSync(post.filepath, filtered.join("\n"), "utf-8");
+        count++;
+      }
+    } catch {
+      // skip
+    }
+  }
+  return count;
 }
 
 // CRC32 table (matches hexo-abbrlink default: crc32 decimal)
@@ -214,6 +259,7 @@ export function createPost(hexoPath: string, options: CreatePostOptions): HexoPo
 
   const filepath = path.join(targetDir, filename);
   fs.writeFileSync(filepath, fileContent, "utf-8");
+  invalidatePostsCache();
   return parsePost(filepath, filename, draft);
 }
 
@@ -311,6 +357,36 @@ export function createPage(hexoPath: string, options: CreatePageOptions): HexoPa
   return parsePage(filepath, "index.md", slug);
 }
 
+export function updateTagInPosts(hexoPath: string, oldTag: string, newTag: string | null): number {
+  const posts = readPosts(hexoPath);
+  let count = 0;
+  for (const post of posts) {
+    try {
+      const raw = fs.readFileSync(post.filepath, "utf-8");
+      const parsed = matter(raw);
+      const tags: string[] = Array.isArray(parsed.data.tags)
+        ? (parsed.data.tags as unknown[]).flat().map(String)
+        : parsed.data.tags
+        ? [String(parsed.data.tags)]
+        : [];
+
+      if (!tags.includes(oldTag)) continue;
+
+      const newTags = newTag === null
+        ? tags.filter((t) => t !== oldTag)
+        : tags.map((t) => (t === oldTag ? newTag : t));
+
+      parsed.data.tags = newTags;
+      fs.writeFileSync(post.filepath, matter.stringify(parsed.content, parsed.data), "utf-8");
+      count++;
+    } catch {
+      // skip unreadable files
+    }
+  }
+  invalidatePostsCache();
+  return count;
+}
+
 export function togglePostDraft(filepath: string, hexoPath: string): HexoPost {
   const postsDir = getPostsDir(hexoPath);
   const draftsDir = getDraftsDir(hexoPath);
@@ -343,5 +419,6 @@ export function togglePostDraft(filepath: string, hexoPath: string): HexoPost {
   fs.writeFileSync(filepath, matter.stringify(parsed.content, parsed.data), "utf-8");
 
   fs.renameSync(filepath, newFilepath);
+  invalidatePostsCache();
   return parsePost(newFilepath, filename, !isDraft);
 }

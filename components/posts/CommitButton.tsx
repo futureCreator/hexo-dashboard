@@ -50,8 +50,9 @@ export default function CommitButton() {
     <button
       onClick={handleCommit}
       disabled={isLoading}
+      title="Commit & Push (c)"
       className={`
-        flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
+        flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 w-full sm:w-auto rounded-xl text-sm font-medium
         transition-all duration-200 cursor-pointer select-none border
         ${
           isLoading
@@ -62,20 +63,20 @@ export default function CommitButton() {
     >
       {isLoading ? (
         <>
-          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          Pushing…
+          <span className="hidden sm:inline">Pushing…</span>
         </>
       ) : (
         <>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
-          Commit & Push
-          <kbd className="ml-1 text-[10px] font-mono px-1 py-0.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--muted)]">
+          <span className="hidden sm:inline">Commit & Push</span>
+          <kbd className="hidden sm:inline-flex ml-1 text-[10px] font-mono px-1 py-0.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--muted)]">
             c
           </kbd>
         </>

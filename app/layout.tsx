@@ -53,10 +53,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Anti-flicker: apply theme class before first paint */}
+        {/* Anti-flicker: apply dark class before first paint based on system preference */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{const t=localStorage.getItem('theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`,
+            __html: `try{if(window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}}catch(e){}`,
           }}
         />
       </head>

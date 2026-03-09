@@ -54,6 +54,15 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.18 - 2026-03-09
+- Added **Tags** page (`/tags`) — word cloud visualization (`react-d3-cloud`) with sortable tag list, inline rename, and delete (removes `{% post_link %}` references across posts); added `/api/tags` GET/PATCH/DELETE endpoint and **Tags** nav item in sidebar
+- Added `findPostLinkReferences`, `cleanPostLinkReferences`, and `updateTagInPosts` helpers to `lib/hexo.ts`
+- Redesigned **design tokens** in `globals.css` to follow Apple Human Interface Guidelines — iOS system-grouped backgrounds, label hierarchy, system fills, opaque separators, and semantic colors (success, warning, error) for both light and dark appearances; dark mode now uses true black (`#000000`) optimised for OLED
+- Redesigned **DashboardLayout** with an iOS-style page title header and a responsive bottom tab bar for mobile navigation
+- Refactored **Sidebar** for a more compact, native-feeling look
+- Simplified **Posts** page header (removed redundant action buttons from header row; actions remain in post cards)
+- Refactored **Settings** page into `SectionHeader` / `FormGroup` / `FormRow` sub-components for improved readability
+
 ### v0.1.17 - 2026-03-08
 - Added **Links** page (`/links`) — interactive force-graph visualization of internal post links (`{% post_link %}` and Markdown links), including broken-link detection; added `react-force-graph-2d` dependency and **Links** nav item in sidebar
 - Added **post link picker** in `EditModal` — toolbar button opens a searchable panel to insert `{% post_link slug "Title" %}` tags at cursor; replaced the previous AIToolbar

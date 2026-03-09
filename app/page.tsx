@@ -2,11 +2,13 @@ import fs from "fs";
 import path from "path";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import SectionLabel from "@/components/ui/SectionLabel";
 import HomeNewPostButton from "@/components/home/HomeNewPostButton";
 import MonthlyBarChart from "@/components/home/MonthlyBarChart";
 import WritingCoachCard from "@/components/home/WritingCoachCard";
 import ContributionHeatmap from "@/components/posts/ContributionHeatmap";
+import CleanButton from "@/components/posts/CleanButton";
+import CommitButton from "@/components/posts/CommitButton";
+import DeployButton from "@/components/posts/DeployButton";
 import { loadSettings } from "@/lib/settings";
 import { readPosts, hexoPathValid, getSiteConfig } from "@/lib/hexo";
 
@@ -34,7 +36,6 @@ async function getDashboardData() {
 
   const recentPosts = posts.slice(0, 8);
 
-  // Top categories
   const categoryCountMap: Record<string, number> = {};
   posts.forEach((p) => {
     p.categories.forEach((c) => {
@@ -46,7 +47,6 @@ async function getDashboardData() {
     .slice(0, 5)
     .map(([name, count]) => ({ name, count }));
 
-  // Top tags
   const tagCountMap: Record<string, number> = {};
   posts.forEach((p) => {
     p.tags.forEach((t) => {
@@ -58,7 +58,6 @@ async function getDashboardData() {
     .slice(0, 8)
     .map(([name, count]) => ({ name, count }));
 
-  // Monthly counts for last 12 months
   const now2 = new Date();
   const monthCountMap: Record<string, number> = {};
   for (let i = 11; i >= 0; i--) {
@@ -125,14 +124,14 @@ interface StatCardProps {
 function StatCard({ label, value, icon, accent = false }: StatCardProps) {
   return (
     <div
-      className={`rounded-2xl border p-5 flex items-start gap-4 ${
+      className={`rounded-[14px] border p-4 flex items-center gap-3 ${
         accent
-          ? "border-[rgba(0,82,255,0.2)] bg-[var(--accent-subtle)]"
-          : "border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)]"
+          ? "border-[var(--accent)]/20 bg-[var(--accent-subtle)]"
+          : "border-[var(--border)] bg-[var(--card)]"
       }`}
     >
       <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+        className={`w-10 h-10 rounded-[11px] flex items-center justify-center shrink-0 ${
           accent
             ? "bg-[var(--accent)] text-white"
             : "bg-[var(--muted)] text-[var(--muted-foreground)]"
@@ -140,11 +139,11 @@ function StatCard({ label, value, icon, accent = false }: StatCardProps) {
       >
         {icon}
       </div>
-      <div>
-        <div className="text-2xl font-semibold text-[var(--foreground)] leading-none mb-1">
+      <div className="min-w-0">
+        <div className="text-[22px] font-semibold text-[var(--foreground)] leading-none mb-0.5 tabular-nums">
           {value}
         </div>
-        <div className="text-xs text-[var(--muted-foreground)] font-medium">{label}</div>
+        <div className="text-[12px] text-[var(--muted-foreground)]">{label}</div>
       </div>
     </div>
   );
@@ -155,41 +154,23 @@ export default async function HomePage() {
 
   return (
     <DashboardLayout>
-      <div className="px-4 py-6 sm:px-8 sm:py-10 max-w-5xl">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
-          <div>
-            <SectionLabel pulse className="mb-4">
-              Overview
-            </SectionLabel>
-            <h1 className="font-display text-3xl sm:text-4xl text-[var(--foreground)] leading-tight mb-2">
-              Welcome to{" "}
-              <span className="gradient-text">Hexo Dashboard</span>
-            </h1>
-            <p className="text-[var(--muted-foreground)] text-sm">
-              {data.configured && data.valid && data.siteConfig.url
-                ? `Managing ${data.siteConfig.url}`
-                : "Your Hexo blog management hub."}
-            </p>
-          </div>
-          {data.configured && data.valid && <HomeNewPostButton />}
-        </div>
+      <div className="px-4 py-5 sm:px-8 sm:py-8 max-w-5xl">
 
         {/* Not configured */}
         {!data.configured && (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--accent-subtle)] border border-[rgba(0,82,255,0.2)] flex items-center justify-center mx-auto mb-5">
-              <svg className="w-7 h-7 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          <div className="rounded-[18px] border border-[var(--border)] bg-[var(--card)] p-10 text-center mt-4">
+            <div className="w-14 h-14 rounded-[16px] bg-[var(--accent-subtle)] border border-[var(--accent)]/20 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-[var(--foreground)] mb-2">No Hexo path configured</h2>
-            <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-sm mx-auto">
-              Set your local Hexo blog directory path to get started.
+            <h2 className="text-[17px] font-semibold text-[var(--foreground)] mb-2">No Hexo path configured</h2>
+            <p className="text-[14px] text-[var(--muted-foreground)] mb-6 max-w-xs mx-auto">
+              Set your local Hexo blog directory to get started.
             </p>
             <Link
               href="/settings"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 hover:-translate-y-0.5 transition-all duration-200"
+              className="inline-flex items-center gap-2 px-5 h-[44px] rounded-[12px] bg-[var(--accent)] text-white text-[15px] font-semibold hover:brightness-110 active:scale-[0.98] transition-all duration-150"
             >
               Configure Settings
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,17 +182,17 @@ export default async function HomePage() {
 
         {/* Invalid path */}
         {data.configured && !data.valid && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20 p-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 flex items-center justify-center mx-auto mb-5">
-              <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <div className="rounded-[18px] border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 p-10 text-center mt-4">
+            <div className="w-14 h-14 rounded-[16px] bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-red-800 dark:text-red-300 mb-2">Invalid Hexo path</h2>
-            <p className="text-sm text-red-600 dark:text-red-400 mb-6">The configured path is missing or invalid.</p>
+            <h2 className="text-[17px] font-semibold text-red-800 dark:text-red-300 mb-2">Invalid Hexo path</h2>
+            <p className="text-[14px] text-red-600 dark:text-red-400 mb-6">The configured path is missing or invalid.</p>
             <Link
               href="/settings"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-all duration-200"
+              className="inline-flex items-center gap-2 px-5 h-[44px] rounded-[12px] bg-red-600 text-white text-[15px] font-semibold hover:bg-red-700 active:scale-[0.98] transition-all duration-150"
             >
               Update Settings
             </Link>
@@ -221,15 +202,34 @@ export default async function HomePage() {
         {/* Dashboard content */}
         {data.configured && data.valid && (
           <>
-            {/* Stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+              <div>
+                <h1 className="text-[28px] sm:text-[32px] font-bold text-[var(--foreground)] leading-tight tracking-[-0.5px] mb-1">
+                  <span className="gradient-text">Hexo</span> Dashboard
+                </h1>
+                <p className="text-[13px] text-[var(--muted-foreground)]">
+                  {data.siteConfig.url ? `Managing ${data.siteConfig.url}` : "Your Hexo blog management hub."}
+                </p>
+              </div>
+              <div className="grid grid-cols-4 sm:flex sm:items-center gap-2 shrink-0">
+                <HomeNewPostButton />
+                <CleanButton />
+                <CommitButton />
+                <DeployButton />
+              </div>
+            </div>
+
+            {/* Stat cards — 2x2 on mobile, 4-col on desktop */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
               <StatCard
                 label="Total Posts"
                 value={data.totalCount}
                 accent
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 }
               />
@@ -238,7 +238,7 @@ export default async function HomePage() {
                 value={data.publishedCount}
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 13l4 4L19 7" />
                   </svg>
                 }
               />
@@ -247,16 +247,18 @@ export default async function HomePage() {
                 value={data.draftCount}
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6-6m2.828-2.828a2 2 0 010 2.828l-9 9A2 2 0 017 17H5v-2a2 2 0 01.586-1.414l9-9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M15.232 5.232l3.536 3.536M9 13l6-6m2.828-2.828a2 2 0 010 2.828l-9 9A2 2 0 017 17H5v-2a2 2 0 01.586-1.414l9-9z" />
                   </svg>
                 }
               />
               <StatCard
-                label="Written Today"
+                label="Today"
                 value={data.todayCount}
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 }
               />
@@ -266,10 +268,10 @@ export default async function HomePage() {
             <ContributionHeatmap posts={data.posts} />
 
             {/* Monthly bar chart */}
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] px-5 pt-4 pb-5 mb-6">
+            <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] px-5 pt-4 pb-5 mb-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-[var(--foreground)]">Posts per Month</h2>
-                <span className="text-xs text-[var(--muted-foreground)]">Last 12 months</span>
+                <h2 className="text-[13px] font-semibold text-[var(--foreground)]">Posts per Month</h2>
+                <span className="text-[11px] text-[var(--muted-foreground)]">Last 12 months</span>
               </div>
               <MonthlyBarChart data={data.monthlyCounts} />
             </div>
@@ -278,54 +280,76 @@ export default async function HomePage() {
             <WritingCoachCard />
 
             {/* Main content grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
               {/* Recent posts */}
               <div className="lg:col-span-2">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-[var(--foreground)]">Recent Posts</h2>
+                <div className="flex items-center justify-between mb-2.5">
+                  <h2 className="text-[13px] font-semibold text-[var(--foreground)]">Recent Posts</h2>
                   <Link
                     href="/posts"
-                    className="text-xs text-[var(--accent)] hover:underline font-medium"
+                    className="text-[13px] text-[var(--accent)] font-medium"
                   >
                     View all
                   </Link>
                 </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] overflow-hidden">
+                <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] overflow-hidden">
                   {data.recentPosts.length === 0 ? (
-                    <div className="px-5 py-10 text-center text-sm text-[var(--muted-foreground)]">
+                    <div className="px-5 py-10 text-center text-[14px] text-[var(--muted-foreground)]">
                       No posts yet.
                     </div>
                   ) : (
                     <ul className="divide-y divide-[var(--border)]">
-                      {data.recentPosts.map((post) => (
-                        <li key={post.filepath} className="px-5 py-3.5 flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-sm font-medium text-[var(--foreground)] truncate">
-                                {post.title}
-                              </span>
-                              {post.draft && (
-                                <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                  Draft
-                                </span>
-                              )}
+                      {data.recentPosts.map((post) => {
+                        const postUrl = (() => {
+                          if (!data.siteConfig.url || post.draft) return "";
+                          const date = post.date ? new Date(post.date) : null;
+                          const slug = data.siteConfig.permalink
+                            .replace(/:abbrlink/g, post.abbrlink != null ? String(post.abbrlink) : "")
+                            .replace(/:year/g, date ? String(date.getUTCFullYear()) : "")
+                            .replace(/:month/g, date ? String(date.getUTCMonth() + 1).padStart(2, "0") : "")
+                            .replace(/:day/g, date ? String(date.getUTCDate()).padStart(2, "0") : "")
+                            .replace(/:title/g, post.title.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""))
+                            .replace(/:filename/g, post.filename.replace(/\.md$/, ""));
+                          return `${data.siteConfig.url}/${slug}`.replace(/([^:])\/\//g, "$1/");
+                        })();
+                        return (
+                          <li key={post.filepath} className="px-4 py-3.5 min-h-[52px] flex items-start gap-3">
+                            <div className={`w-[3px] h-[18px] rounded-full mt-1 shrink-0 ${post.draft ? "bg-amber-400" : "bg-[var(--success)]"}`} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                {postUrl ? (
+                                  <a
+                                    href={postUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[14px] font-medium text-[var(--foreground)] truncate hover:text-[var(--accent)] transition-colors duration-150 inline-flex items-center gap-1 group/link"
+                                  >
+                                    {post.title}
+                                    <svg className="w-3 h-3 shrink-0 opacity-0 group-hover/link:opacity-60 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                  </a>
+                                ) : (
+                                  <span className="text-[14px] font-medium text-[var(--foreground)] truncate">{post.title}</span>
+                                )}
+                                {post.draft && (
+                                  <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded-[5px] text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 leading-none">
+                                    Draft
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[12px] text-[var(--muted-foreground)]">{formatDate(post.date)}</span>
+                                {post.tags.slice(0, 3).map((tag) => (
+                                  <span key={tag} className="text-[11px] px-1.5 py-px rounded-[5px] bg-[var(--muted)] text-[var(--muted-foreground)]">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs text-[var(--muted-foreground)]">
-                                {formatDate(post.date)}
-                              </span>
-                              {post.tags.slice(0, 3).map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--muted)] text-[var(--muted-foreground)] font-medium"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -335,36 +359,24 @@ export default async function HomePage() {
               <div className="flex flex-col gap-4">
                 {/* Site info */}
                 <div>
-                  <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Site Info</h2>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] divide-y divide-[var(--border)]">
+                  <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-2.5">Site Info</h2>
+                  <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)]">
                     {data.siteConfig.url && (
                       <div className="px-4 py-3">
-                        <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] mb-0.5">
-                          Site URL
-                        </div>
-                        <div className="text-xs font-medium text-[var(--foreground)] truncate">
-                          {data.siteConfig.url}
-                        </div>
+                        <div className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] mb-0.5 font-mono">Site URL</div>
+                        <div className="text-[13px] font-medium text-[var(--foreground)] truncate">{data.siteConfig.url}</div>
                       </div>
                     )}
                     {data.lastGeneratedAt && (
                       <div className="px-4 py-3">
-                        <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] mb-0.5">
-                          Last Generated
-                        </div>
-                        <div className="text-xs font-medium text-[var(--foreground)]">
-                          {formatRelative(data.lastGeneratedAt)}
-                        </div>
+                        <div className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] mb-0.5 font-mono">Last Generated</div>
+                        <div className="text-[13px] font-medium text-[var(--foreground)]">{formatRelative(data.lastGeneratedAt)}</div>
                       </div>
                     )}
                     <div className="px-4 py-3">
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] mb-0.5">
-                        Most Recent Post
-                      </div>
-                      <div className="text-xs font-medium text-[var(--foreground)]">
-                        {data.recentPosts[0]
-                          ? formatRelative(data.recentPosts[0].date)
-                          : "—"}
+                      <div className="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] mb-0.5 font-mono">Most Recent Post</div>
+                      <div className="text-[13px] font-medium text-[var(--foreground)]">
+                        {data.recentPosts[0] ? formatRelative(data.recentPosts[0].date) : "—"}
                       </div>
                     </div>
                   </div>
@@ -373,14 +385,12 @@ export default async function HomePage() {
                 {/* Top Categories */}
                 {data.topCategories.length > 0 && (
                   <div>
-                    <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Top Categories</h2>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] divide-y divide-[var(--border)]">
+                    <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-2.5">Top Categories</h2>
+                    <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)]">
                       {data.topCategories.map(({ name, count }) => (
                         <div key={name} className="px-4 py-2.5 flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-[var(--foreground)] truncate">{name}</span>
-                          <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--accent-subtle)] text-[var(--accent)]">
-                            {count}
-                          </span>
+                          <span className="text-[13px] font-medium text-[var(--foreground)] truncate">{name}</span>
+                          <span className="shrink-0 text-[11px] font-semibold px-1.5 py-px rounded-[5px] bg-[var(--accent-subtle)] text-[var(--accent)]">{count}</span>
                         </div>
                       ))}
                     </div>
@@ -390,14 +400,11 @@ export default async function HomePage() {
                 {/* Top Tags */}
                 {data.topTags.length > 0 && (
                   <div>
-                    <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Top Tags</h2>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_2px_6px_rgba(0,0,0,0.06)] p-3">
+                    <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-2.5">Top Tags</h2>
+                    <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-3">
                       <div className="flex flex-wrap gap-1.5">
                         {data.topTags.map(({ name, count }) => (
-                          <span
-                            key={name}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--muted)] text-[var(--foreground)] text-xs font-medium"
-                          >
+                          <span key={name} className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] bg-[var(--muted)] text-[var(--foreground)] text-[12px] font-medium">
                             {name}
                             <span className="text-[10px] text-[var(--muted-foreground)]">{count}</span>
                           </span>

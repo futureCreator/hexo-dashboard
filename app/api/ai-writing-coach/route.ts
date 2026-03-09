@@ -37,36 +37,36 @@ export async function GET() {
 
   // Build per-post stats
   const postStats = posts.map((post) => {
-    let wordCount = 0;
+    let charCount = 0;
     try {
       const content = fs.readFileSync(post.filepath, "utf-8");
       const { readability } = analyzeContent(content);
-      wordCount = readability.wordCount;
+      charCount = readability.charCount;
     } catch {
       // ignore
     }
     return {
       date: post.date!,
       month: post.date!.slice(0, 7),
-      wordCount,
+      charCount,
       tags: post.tags,
       categories: post.categories,
     };
   });
 
   // Monthly stats
-  const monthMap: Record<string, { totalWords: number; count: number }> = {};
+  const monthMap: Record<string, { totalChars: number; count: number }> = {};
   for (const p of postStats) {
-    if (!monthMap[p.month]) monthMap[p.month] = { totalWords: 0, count: 0 };
-    monthMap[p.month].totalWords += p.wordCount;
+    if (!monthMap[p.month]) monthMap[p.month] = { totalChars: 0, count: 0 };
+    monthMap[p.month].totalChars += p.charCount;
     monthMap[p.month].count++;
   }
   const monthlyTrend = Object.entries(monthMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-12)
-    .map(([month, { totalWords, count }]) => ({
+    .map(([month, { totalChars, count }]) => ({
       month,
-      avgWords: count > 0 ? Math.round(totalWords / count) : 0,
+      avgChars: count > 0 ? Math.round(totalChars / count) : 0,
       postCount: count,
     }));
 
@@ -101,13 +101,13 @@ export async function GET() {
     sortedMonths.slice(-6, -3).includes(m.month)
   );
 
-  const recentAvgWords =
+  const recentAvgChars =
     recent3.length > 0
-      ? Math.round(recent3.reduce((s, m) => s + m.avgWords, 0) / recent3.length)
+      ? Math.round(recent3.reduce((s, m) => s + m.avgChars, 0) / recent3.length)
       : 0;
-  const prevAvgWords =
+  const prevAvgChars =
     prev3.length > 0
-      ? Math.round(prev3.reduce((s, m) => s + m.avgWords, 0) / prev3.length)
+      ? Math.round(prev3.reduce((s, m) => s + m.avgChars, 0) / prev3.length)
       : 0;
   const recentPostsPerMonth =
     recent3.length > 0
@@ -124,8 +124,8 @@ export async function GET() {
     topTags,
     topCategories,
     recentVsPrev: {
-      recent3MonthsAvgWords: recentAvgWords,
-      prev3MonthsAvgWords: prevAvgWords,
+      recent3MonthsAvgChars: recentAvgChars,
+      prev3MonthsAvgChars: prevAvgChars,
       recent3MonthsPostsPerMonth: recentPostsPerMonth,
       prev3MonthsPostsPerMonth: prevPostsPerMonth,
     },
@@ -148,7 +148,7 @@ Return a JSON object with an "insights" array. Each insight must have:
 - "metric": optional short metric string like "↓ 23%" or "월 2.3편"
 
 Focus on:
-1. Word count trend (increasing/decreasing/stable)
+1. Character count trend (increasing/decreasing/stable) — note: avgChars is Korean character count (글자수), not English word count
 2. Posting frequency trend
 3. Topic diversity (tag/category variety)
 4. Most and least frequent topics
@@ -167,7 +167,7 @@ Return ONLY valid JSON like: {"insights": [...]}`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 2048 },
+          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 4096 },
         }),
         signal: AbortSignal.timeout(30000),
       }

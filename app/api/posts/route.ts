@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 import { loadSettings } from "@/lib/settings";
-import { readPosts, deletePost, togglePostDraft, createPost, hexoPathValid, invalidatePostsCache } from "@/lib/hexo";
+import { readPosts, deletePost, togglePostDraft, createPost, hexoPathValid, invalidatePostsCache, findPostLinkReferences, cleanPostLinkReferences } from "@/lib/hexo";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { hexoPath } = loadSettings();
 
   if (!hexoPath) {
@@ -17,6 +18,13 @@ export async function GET() {
       { error: "Hexo path is invalid or inaccessible", configured: true },
       { status: 400 }
     );
+  }
+
+  // ?refs=<slug> — check which posts reference this slug via post_link
+  const slug = new URL(request.url).searchParams.get("refs");
+  if (slug) {
+    const refs = findPostLinkReferences(hexoPath, slug);
+    return NextResponse.json({ refs });
   }
 
   const posts = readPosts(hexoPath);
@@ -43,9 +51,11 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
+    const slug = path.basename(filepath, ".md");
+    const cleaned = cleanPostLinkReferences(hexoPath, slug);
     deletePost(filepath);
     invalidatePostsCache();
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, cleanedRefs: cleaned });
   } catch (err) {
     return NextResponse.json(
       { error: String(err) },

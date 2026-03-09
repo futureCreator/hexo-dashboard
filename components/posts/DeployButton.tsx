@@ -106,8 +106,9 @@ export default function DeployButton() {
       <button
         onClick={handleDeploy}
         disabled={isLoading}
+        title="Deploy (d)"
         className={`
-          flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
+          flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 w-full sm:w-auto rounded-xl text-sm font-medium
           transition-all duration-200 cursor-pointer select-none
           ${
             isLoading
@@ -118,20 +119,20 @@ export default function DeployButton() {
       >
         {isLoading ? (
           <>
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Deploying…
+            <span className="hidden sm:inline">Deploying…</span>
           </>
         ) : (
           <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            Deploy
-            <kbd className="ml-1 text-[10px] font-mono px-1 py-0.5 rounded border border-white/30 text-white/70 bg-white/10">
+            <span className="hidden sm:inline">Deploy</span>
+            <kbd className="hidden sm:inline-flex ml-1 text-[10px] font-mono px-1 py-0.5 rounded border border-white/30 text-white/70 bg-white/10">
               d
             </kbd>
           </>
