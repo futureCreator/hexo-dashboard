@@ -131,7 +131,9 @@ export default function EditModal({
 
   const handleInsertPostLink = useCallback(
     (post: HexoPost) => {
-      const slug = post.abbrlink != null ? String(post.abbrlink) : post.filename.replace(/\.md$/, "");
+      const base = post.filename.replace(/\.md$/, "");
+      const dateSlugMatch = base.match(/^\d{8}-(.+)$/);
+      const slug = dateSlugMatch ? dateSlugMatch[1] : base;
       const tag = `{% post_link ${slug} "${post.title}" %}`;
       insertTextAtCursor(tag);
       setShowPostPicker(false);

@@ -54,6 +54,11 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.19 - 2026-03-12
+- Localized **AI Writing Coach** card UI strings from Korean to English (`WritingCoachCard`)
+- Fixed `{% post_link %}` slug generation in `EditModal` — strips date prefix (e.g. `20260101-`) from filenames so generated tags resolve correctly
+- Added `.claude` to `.gitignore`
+
 ### v0.1.18 - 2026-03-09
 - Added **Tags** page (`/tags`) — word cloud visualization (`react-d3-cloud`) with sortable tag list, inline rename, and delete (removes `{% post_link %}` references across posts); added `/api/tags` GET/PATCH/DELETE endpoint and **Tags** nav item in sidebar
 - Added `findPostLinkReferences`, `cleanPostLinkReferences`, and `updateTagInPosts` helpers to `lib/hexo.ts`

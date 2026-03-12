@@ -36,7 +36,7 @@ export default function WritingCoachCard() {
         setData(json);
       }
     } catch {
-      setError("분석 중 오류가 발생했습니다.");
+      setError("An error occurred during analysis.");
     } finally {
       setLoading(false);
     }
@@ -94,10 +94,10 @@ export default function WritingCoachCard() {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">AI 라이팅 코치</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">AI Writing Coach</p>
             {data && (
               <p className="text-[11px] text-[var(--muted-foreground)]">
-                {new Date(data.generatedAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} 분석
+                Analyzed {new Date(data.generatedAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
               </p>
             )}
           </div>
@@ -113,7 +113,7 @@ export default function WritingCoachCard() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              재분석
+              Re-analyze
             </button>
           )}
           {!open ? (
@@ -124,7 +124,7 @@ export default function WritingCoachCard() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
               </svg>
-              분석 시작
+              Analyze
             </button>
           ) : (
             <button
@@ -137,7 +137,7 @@ export default function WritingCoachCard() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
-              {open ? "접기" : "펼치기"}
+              {open ? "Collapse" : "Expand"}
             </button>
           )}
         </div>
@@ -168,7 +168,7 @@ export default function WritingCoachCard() {
                       </div>
                     </div>
                   ))}
-                  <p className="text-center text-xs text-[var(--muted-foreground)] pt-1">글 패턴을 분석하는 중…</p>
+                  <p className="text-center text-xs text-[var(--muted-foreground)] pt-1">Analyzing writing patterns…</p>
                 </div>
               )}
 
@@ -183,7 +183,7 @@ export default function WritingCoachCard() {
                     onClick={analyze}
                     className="shrink-0 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
                   >
-                    재시도
+                    Retry
                   </button>
                 </div>
               )}
