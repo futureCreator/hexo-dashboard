@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { HexoPost } from "@/lib/hexo";
+import { toLocalDateKey, countLevel, calcStreaks } from "@/lib/streak";
 
 interface Props {
   posts: HexoPost[];
@@ -22,23 +23,6 @@ const MONTH_GUTTER = 18;
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const easeOut = [0.16, 1, 0.3, 1] as const;
-
-function toLocalDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function countLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
-  if (count === 0) return 0;
-  if (max <= 1) return 4;
-  const ratio = count / max;
-  if (ratio < 0.25) return 1;
-  if (ratio < 0.5) return 2;
-  if (ratio < 0.75) return 3;
-  return 4;
-}
 
 function StreakStat({
   label,
@@ -67,35 +51,6 @@ function StreakStat({
       </div>
     </div>
   );
-}
-
-function calcStreaks(cells: { date: Date | null; count: number }[]) {
-  // Only real cells (date != null)
-  const real = cells.filter((c) => c.date !== null);
-  if (real.length === 0) return { current: 0, longest: 0, totalPosts: 0 };
-
-  const totalPosts = real.reduce((s, c) => s + c.count, 0);
-
-  // Longest streak
-  let longest = 0;
-  let run = 0;
-  for (const c of real) {
-    if (c.count > 0) {
-      run++;
-      if (run > longest) longest = run;
-    } else {
-      run = 0;
-    }
-  }
-
-  // Current streak: count back from last real cell (today)
-  let current = 0;
-  for (let i = real.length - 1; i >= 0; i--) {
-    if (real[i].count > 0) current++;
-    else break;
-  }
-
-  return { current, longest, totalPosts };
 }
 
 export default function ContributionHeatmap({ posts }: Props) {
