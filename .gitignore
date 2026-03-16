@@ -31,7 +31,9 @@ public/workbox-*.js.map
 
 # Logs
 npm-debug.log*
+logs/
 
 # Design spec
 SPEC.md
 .claude
+.superpowers/
