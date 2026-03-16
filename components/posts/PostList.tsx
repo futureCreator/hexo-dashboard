@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import PostCard from "./PostCard";
 import CleanButton from "./CleanButton";
 import CommitButton from "./CommitButton";
 import DeployButton from "./DeployButton";
 import { useToast } from "@/components/ui/Toast";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import EditModal from "./EditModal";
 import NewPostModal from "./NewPostModal";
 import { apiUrl } from "@/lib/api";
@@ -34,6 +36,16 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
   const [watching, setWatching] = useState(false);
   const isRefreshing = useRef(false);
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
+  const router = useRouter();
+
+  const handleNewPost = useCallback(() => {
+    if (isMobile) {
+      router.push("/write");
+    } else {
+      setNewPostModalOpen(true);
+    }
+  }, [isMobile, router]);
 
   const refreshPosts = useCallback(async () => {
     if (isRefreshing.current) return;
@@ -69,12 +81,12 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
         searchRef.current?.focus();
       } else if (e.key === "n" || e.key === "N") {
         e.preventDefault();
-        setNewPostModalOpen(true);
+        handleNewPost();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [handleNewPost]);
 
   const now = new Date();
   const filtered = posts.filter((p) => {
@@ -140,7 +152,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
         className="grid grid-cols-4 sm:flex sm:items-center gap-2 mb-4"
       >
         <button
-          onClick={() => setNewPostModalOpen(true)}
+          onClick={handleNewPost}
           title="New Post (n)"
           className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 w-full sm:w-auto rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer shrink-0"
         >

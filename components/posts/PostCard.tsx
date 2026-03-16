@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/Badge";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import EditModal from "./EditModal";
 import { useToast } from "@/components/ui/Toast";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { apiUrl } from "@/lib/api";
 import type { HexoPost, SiteConfig } from "@/lib/hexo";
 
@@ -51,6 +53,8 @@ export default function PostCard({
   isLast = false,
 }: PostCardProps) {
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -135,6 +139,14 @@ export default function PostCard({
 
   const postUrl = siteConfig ? buildPostUrl(siteConfig, post) : "";
 
+  const handleCardClick = () => {
+    if (isMobile) {
+      router.push(`/edit?path=${encodeURIComponent(post.filepath)}`);
+    } else {
+      setEditModalOpen(true);
+    }
+  };
+
   return (
     <>
       <motion.div
@@ -152,7 +164,7 @@ export default function PostCard({
         {/* Main content — tap to edit */}
         <button
           className="flex-1 min-w-0 text-left px-4 py-3.5 cursor-pointer"
-          onClick={() => setEditModalOpen(true)}
+          onClick={handleCardClick}
         >
           <div className="flex items-start gap-2 mb-1">
             <p className="text-[15px] font-medium font-kopub text-[var(--foreground)] leading-snug flex-1 min-w-0 text-left">
