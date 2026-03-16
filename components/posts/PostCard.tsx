@@ -6,6 +6,7 @@ import Badge from "@/components/ui/Badge";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import EditModal from "./EditModal";
 import { useToast } from "@/components/ui/Toast";
+import { apiUrl } from "@/lib/api";
 import type { HexoPost, SiteConfig } from "@/lib/hexo";
 
 interface PostCardProps {
@@ -76,7 +77,7 @@ export default function PostCard({
     setIsCheckingRefs(true);
     try {
       const slug = post.filename.replace(/\.md$/, "");
-      const res = await fetch(`/api/posts?refs=${encodeURIComponent(slug)}`);
+      const res = await fetch(apiUrl(`/api/posts?refs=${encodeURIComponent(slug)}`));
       if (res.ok) {
         const data = await res.json();
         setReferencedBy(data.refs ?? []);
@@ -89,7 +90,7 @@ export default function PostCard({
   async function handleDelete() {
     setIsDeleting(true);
     try {
-      const res = await fetch("/api/posts", {
+      const res = await fetch(apiUrl("/api/posts"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filepath: post.filepath }),
@@ -110,7 +111,7 @@ export default function PostCard({
     setIsToggling(true);
     const oldFilepath = post.filepath;
     try {
-      const res = await fetch("/api/posts", {
+      const res = await fetch(apiUrl("/api/posts"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filepath: oldFilepath }),

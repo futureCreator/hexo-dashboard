@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import SectionLabel from "@/components/ui/SectionLabel";
+import { apiUrl } from "@/lib/api";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { ForceGraphView } from "@/components/links/ForceGraphView";
@@ -215,7 +215,7 @@ export default function LinksPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("graph");
 
   useEffect(() => {
-    fetch("/api/links")
+    fetch(apiUrl("/api/links"))
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
@@ -259,7 +259,6 @@ export default function LinksPage() {
   });
 
   return (
-    <DashboardLayout>
       <div className="px-4 py-6 sm:px-8 sm:py-10 max-w-5xl">
         {/* Header */}
         <div className="mb-8">
@@ -493,6 +492,5 @@ export default function LinksPage() {
           </motion.div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

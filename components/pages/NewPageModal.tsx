@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { apiUrl } from "@/lib/api";
 import type { HexoPage } from "@/lib/hexo";
 
 interface NewPageModalProps {
@@ -56,7 +57,7 @@ export default function NewPageModal({ isOpen, onClose, onCreated }: NewPageModa
     if (!title.trim() || !derivedSlug) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/pages", {
+      const res = await fetch(apiUrl("/api/pages"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: title.trim(), slug: derivedSlug }),

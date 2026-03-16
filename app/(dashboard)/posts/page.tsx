@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import PostList from "@/components/posts/PostList";
 import { PostListSkeleton } from "@/components/ui/Skeleton";
 import { loadSettings } from "@/lib/settings";
@@ -21,7 +20,6 @@ export default async function PostsPage() {
   const { configured, valid, posts, siteConfig } = await getPostsData();
 
   return (
-    <DashboardLayout>
       <div className="px-4 py-5 sm:px-8 sm:py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-5">
@@ -87,6 +85,5 @@ export default async function PostsPage() {
           </Suspense>
         )}
       </div>
-    </DashboardLayout>
   );
 }

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { apiUrl } from "@/lib/api";
 import type { HexoPost } from "@/lib/hexo";
 
 interface NewPostModalProps {
@@ -142,7 +143,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
       setRefSearch("");
       setTimeout(() => sourceRef.current?.focus(), 50);
       // Load posts list for reference picker
-      fetch("/api/posts")
+      fetch(apiUrl("/api/posts"))
         .then((r) => r.json())
         .then((d) => { if (d.posts) setAllPosts(d.posts); })
         .catch(() => {});
@@ -171,7 +172,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
     if (!title.trim()) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/posts", {
+      const res = await fetch(apiUrl("/api/posts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -209,7 +210,7 @@ export default function NewPostModal({ isOpen, onClose, onCreated }: NewPostModa
     ];
 
     try {
-      const res = await fetch("/api/ai-write", {
+      const res = await fetch(apiUrl("/api/ai-write"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sources: validSources, perspective: perspective.trim(), category: aiCategory, referencePosts: selectedRefs }),

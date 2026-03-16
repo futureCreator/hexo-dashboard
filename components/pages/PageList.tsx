@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import EditModal from "@/components/posts/EditModal";
 import NewPageModal from "./NewPageModal";
+import { apiUrl } from "@/lib/api";
 import type { HexoPage } from "@/lib/hexo";
 
 interface PageListProps {
@@ -29,7 +30,7 @@ export default function PageList({ initialPages }: PageListProps) {
     if (isRefreshing.current) return;
     isRefreshing.current = true;
     try {
-      const res = await fetch("/api/pages");
+      const res = await fetch(apiUrl("/api/pages"));
       if (!res.ok) return;
       const data = await res.json();
       setPages(data.pages);
@@ -43,7 +44,7 @@ export default function PageList({ initialPages }: PageListProps) {
 
   // SSE file watch
   useEffect(() => {
-    const es = new EventSource("/api/watch");
+    const es = new EventSource(apiUrl("/api/watch"));
     es.addEventListener("connected", () => setWatching(true));
     es.addEventListener("change", refreshPages);
     es.addEventListener("error", () => setWatching(false));

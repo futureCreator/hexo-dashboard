@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p 4000 -H 127.0.0.1",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop hexo-dashboard",
+    "pm2:restart": "pm2 restart hexo-dashboard",
+    "pm2:delete": "pm2 delete hexo-dashboard",
+    "pm2:logs": "pm2 logs hexo-dashboard",
+    "deploy": "NEXT_PUBLIC_BASE_PATH=/proxy/hexo npm run build && npm run pm2:restart"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",

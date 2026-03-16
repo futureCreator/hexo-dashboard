@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import DeleteConfirmModal from "@/components/posts/DeleteConfirmModal";
 import EditModal from "@/components/posts/EditModal";
 import { useToast } from "@/components/ui/Toast";
+import { apiUrl } from "@/lib/api";
 import type { HexoPage } from "@/lib/hexo";
 
 interface PageCardProps {
@@ -47,7 +48,7 @@ export default function PageCard({ page, onDeleted, index = 0 }: PageCardProps) 
   async function handleDelete() {
     setIsDeleting(true);
     try {
-      const res = await fetch("/api/pages", {
+      const res = await fetch(apiUrl("/api/pages"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filepath: page.filepath }),

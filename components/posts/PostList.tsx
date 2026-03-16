@@ -9,6 +9,7 @@ import DeployButton from "./DeployButton";
 import { useToast } from "@/components/ui/Toast";
 import EditModal from "./EditModal";
 import NewPostModal from "./NewPostModal";
+import { apiUrl } from "@/lib/api";
 import type { HexoPost, SiteConfig } from "@/lib/hexo";
 
 type FilterType = "all" | "published" | "draft";
@@ -38,7 +39,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
     if (isRefreshing.current) return;
     isRefreshing.current = true;
     try {
-      const res = await fetch("/api/posts");
+      const res = await fetch(apiUrl("/api/posts"));
       if (!res.ok) return;
       const data = await res.json();
       setPosts(data.posts);
@@ -51,7 +52,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
   }, [showToast]);
 
   useEffect(() => {
-    const es = new EventSource("/api/watch");
+    const es = new EventSource(apiUrl("/api/watch"));
     es.addEventListener("connected", () => setWatching(true));
     es.addEventListener("change", refreshPosts);
     es.addEventListener("error", () => setWatching(false));

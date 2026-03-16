@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import { apiUrl } from "@/lib/api";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -60,7 +60,7 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(apiUrl("/api/settings"))
       .then((r) => r.json())
       .then((data) => {
         if (data.hexoPath) setHexoPath(data.hexoPath);
@@ -78,7 +78,7 @@ export default function SettingsPage() {
     setSuccess(false);
 
     try {
-      const res = await fetch("/api/settings", {
+      const res = await fetch(apiUrl("/api/settings"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,7 +104,6 @@ export default function SettingsPage() {
     "w-full bg-transparent text-[15px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/60 focus:outline-none font-mono disabled:opacity-50";
 
   return (
-    <DashboardLayout>
       <form onSubmit={handleSave}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -263,6 +262,5 @@ export default function SettingsPage() {
           <div className="h-6" />
         </motion.div>
       </form>
-    </DashboardLayout>
   );
 }

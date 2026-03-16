@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import SectionLabel from "@/components/ui/SectionLabel";
 import PageList from "@/components/pages/PageList";
 import { PostListSkeleton } from "@/components/ui/Skeleton";
@@ -21,7 +20,6 @@ export default async function PagesPage() {
   const { configured, valid, pages } = await getPagesData();
 
   return (
-    <DashboardLayout>
       <div className="px-4 py-6 sm:px-8 sm:py-10 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
@@ -113,6 +111,5 @@ export default async function PagesPage() {
           </Suspense>
         )}
       </div>
-    </DashboardLayout>
   );
 }

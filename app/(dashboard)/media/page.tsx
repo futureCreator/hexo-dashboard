@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import SectionLabel from "@/components/ui/SectionLabel";
+import { apiUrl } from "@/lib/api";
 
 interface MediaFile {
   filename: string;
@@ -46,7 +46,7 @@ export default function MediaPage() {
     setError(null);
     try {
       const folder = path.join("/");
-      const res = await fetch(`/api/media${folder ? `?folder=${encodeURIComponent(folder)}` : ""}`);
+      const res = await fetch(apiUrl(`/api/media${folder ? `?folder=${encodeURIComponent(folder)}` : ""}`));
       const json = await res.json();
       if (!res.ok) {
         setError(json.error ?? "Failed to load");
@@ -80,7 +80,7 @@ export default function MediaPage() {
         fd.append("file", file);
         if (folder) fd.append("folder", folder);
         try {
-          const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+          const res = await fetch(apiUrl("/api/media/upload"), { method: "POST", body: fd });
           const d = await res.json();
           if (res.ok) {
             uploaded++;
@@ -115,7 +115,7 @@ export default function MediaPage() {
       const relpath = [...folderPath, filename].join("/");
       setDeletingFile(filename);
       try {
-        const res = await fetch("/api/media", {
+        const res = await fetch(apiUrl("/api/media"), {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ relpath }),
@@ -179,7 +179,6 @@ export default function MediaPage() {
   const isEmpty = !isLoading && !error && data.folders.length === 0 && data.images.length === 0;
 
   return (
-    <DashboardLayout>
       <div
         className="px-4 py-6 sm:px-8 sm:py-10 max-w-6xl relative"
         onDragEnter={handleDragEnter}
@@ -448,6 +447,5 @@ export default function MediaPage() {
           )}
         </AnimatePresence>
       </div>
-    </DashboardLayout>
   );
 }

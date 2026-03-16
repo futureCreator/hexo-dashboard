@@ -7,6 +7,7 @@ import { EditorView } from "@codemirror/view";
 import Button from "@/components/ui/Button";
 import CodeEditor, { CodeEditorHandle } from "@/components/posts/CodeEditor";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { apiUrl } from "@/lib/api";
 import type { HexoPost } from "@/lib/hexo";
 
 interface EditModalProps {
@@ -54,7 +55,7 @@ export default function EditModal({
 
     setIsLoading(true);
     setError(null);
-    fetch(`${contentApiBase}?filepath=${encodeURIComponent(filepath)}`)
+    fetch(apiUrl(`${contentApiBase}?filepath=${encodeURIComponent(filepath)}`))
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
@@ -79,7 +80,7 @@ export default function EditModal({
     setIsSaving(true);
     setError(null);
     try {
-      const res = await fetch(contentApiBase, {
+      const res = await fetch(apiUrl(contentApiBase), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filepath, content }),
@@ -119,7 +120,7 @@ export default function EditModal({
     setPickerSearch("");
     setShowPostPicker(true);
     setPickerLoading(true);
-    fetch("/api/posts")
+    fetch(apiUrl("/api/posts"))
       .then((r) => r.json())
       .then((data) => setPickerPosts(data.posts ?? []))
       .catch(() => setPickerPosts([]))
@@ -178,7 +179,7 @@ export default function EditModal({
         const fd = new FormData();
         fd.append("file", file);
         try {
-          const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+          const res = await fetch(apiUrl("/api/media/upload"), { method: "POST", body: fd });
           const data = await res.json();
           if (res.ok && data.relpath) {
             const alt = data.filename ?? data.relpath;

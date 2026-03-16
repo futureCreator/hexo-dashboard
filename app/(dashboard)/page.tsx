@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import Link from "next/link";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import HomeNewPostButton from "@/components/home/HomeNewPostButton";
 import MonthlyBarChart from "@/components/home/MonthlyBarChart";
 import WritingCoachCard from "@/components/home/WritingCoachCard";
@@ -153,7 +152,6 @@ export default async function HomePage() {
   const data = await getDashboardData();
 
   return (
-    <DashboardLayout>
       <div className="px-4 py-5 sm:px-8 sm:py-8 max-w-5xl">
 
         {/* Not configured */}
@@ -418,6 +416,5 @@ export default async function HomePage() {
           </>
         )}
       </div>
-    </DashboardLayout>
   );
 }

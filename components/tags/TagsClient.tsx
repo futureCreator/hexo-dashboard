@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { apiUrl } from "@/lib/api";
 
 const WordCloud = dynamic(() => import("react-d3-cloud"), { ssr: false });
 
@@ -38,7 +38,7 @@ export default function TagsClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/tags");
+      const res = await fetch(apiUrl("/api/tags"));
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Failed to load tags");
@@ -81,7 +81,7 @@ export default function TagsClient() {
     }
     setRenameSaving(true);
     try {
-      const res = await fetch("/api/tags", {
+      const res = await fetch(apiUrl("/api/tags"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ oldTag: renamingTag, newTag: renameValue.trim() }),
@@ -108,7 +108,7 @@ export default function TagsClient() {
     if (!deletingTag) return;
     setDeleteConfirming(true);
     try {
-      const res = await fetch("/api/tags", {
+      const res = await fetch(apiUrl("/api/tags"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tag: deletingTag }),
@@ -132,7 +132,6 @@ export default function TagsClient() {
   }
 
   return (
-    <DashboardLayout>
       <div className="px-4 py-5 sm:px-8 sm:py-8 max-w-4xl">
 
         {/* Header */}
@@ -433,6 +432,5 @@ export default function TagsClient() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

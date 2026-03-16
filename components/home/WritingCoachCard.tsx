@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiUrl } from "@/lib/api";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -28,7 +29,7 @@ export default function WritingCoachCard() {
     setError(null);
     setOpen(true);
     try {
-      const res = await fetch("/api/ai-writing-coach");
+      const res = await fetch(apiUrl("/api/ai-writing-coach"));
       const json = await res.json();
       if (json.error) {
         setError(json.error);

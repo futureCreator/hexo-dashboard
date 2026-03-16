@@ -15,10 +15,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { TooltipProps } from "recharts";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import Card from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { apiUrl } from "@/lib/api";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -150,8 +150,8 @@ export default function AnalyticsPage() {
     setLoading(true);
     try {
       const [gaRes, gscRes] = await Promise.all([
-        fetch(`/api/analytics?period=${days}`),
-        fetch(`/api/search-console?period=${days}`),
+        fetch(apiUrl(`/api/analytics?period=${days}`)),
+        fetch(apiUrl(`/api/search-console?period=${days}`)),
       ]);
       const [gaJson, gscJson] = await Promise.all([gaRes.json(), gscRes.json()]);
       setData(gaJson);
@@ -165,7 +165,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (tab !== "content" || contentStats) return;
-    fetch("/api/content-stats").then((r) => r.json()).then(setContentStats).catch(() => {});
+    fetch(apiUrl("/api/content-stats")).then((r) => r.json()).then(setContentStats).catch(() => {});
   }, [tab, contentStats]);
 
   const accentColor = resolvedTheme === "dark" ? "#5E6AD2" : "#0052FF";
@@ -176,7 +176,6 @@ export default function AnalyticsPage() {
   const gscImpressionColor = resolvedTheme === "dark" ? "#63E6BE" : "#30D158";
 
   return (
-    <DashboardLayout>
       <div className="px-4 py-5 sm:px-8 sm:py-8 max-w-5xl">
 
         {/* Header */}
@@ -571,6 +570,5 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

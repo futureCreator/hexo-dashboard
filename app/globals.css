@@ -104,10 +104,10 @@
   --color-border: var(--border);
   --color-card: var(--card);
   --color-ring: var(--ring);
-  --font-sans: var(--font-noto-sans-kr), system-ui, sans-serif;
+  --font-sans: var(--font-pretendard), Pretendard, system-ui, sans-serif;
   --font-display: var(--font-calistoga), Georgia, serif;
   --font-mono: var(--font-jetbrains-mono), monospace;
-  --font-kopub: var(--font-noto-sans-kr), 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --font-kopub: var(--font-pretendard), Pretendard, 'Apple SD Gothic Neo', system-ui, sans-serif;
 }
 
 /* ── Dark mode shadows ── */
@@ -140,7 +140,7 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-noto-sans-kr), -apple-system, 'SF Pro Text', system-ui, sans-serif;
+  font-family: var(--font-pretendard), Pretendard, -apple-system, 'SF Pro Text', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Prevent text size adjustment on orientation change */
