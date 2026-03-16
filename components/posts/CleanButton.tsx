@@ -1,36 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useToast } from "@/components/ui/Toast";
-
-type CleanStatus = "idle" | "loading" | "success" | "error";
+import { useEffect } from "react";
+import { useClean } from "@/hooks/useClean";
 
 export default function CleanButton() {
-  const [status, setStatus] = useState<CleanStatus>("idle");
-  const { showToast } = useToast();
-
-  async function handleClean() {
-    setStatus("loading");
-
-    try {
-      const res = await fetch("/api/clean", { method: "POST" });
-      const data = await res.json();
-
-      if (data.success) {
-        setStatus("success");
-        showToast({ type: "success", message: "Clean succeeded." });
-      } else {
-        setStatus("error");
-        showToast({ type: "error", message: data.output || data.error || "Clean failed." });
-      }
-    } catch {
-      setStatus("error");
-      showToast({ type: "error", message: "Network error: Failed to reach clean API." });
-    }
-
-    setTimeout(() => setStatus("idle"), 300);
-  }
-
+  const { status, handleClean } = useClean();
   const isLoading = status === "loading";
 
   useEffect(() => {
@@ -38,13 +12,12 @@ export default function CleanButton() {
       if (e.key !== "x" && e.key !== "X") return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (isLoading) return;
+      if (status !== "idle") return;
       handleClean();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+  }, [status, handleClean]);
 
   return (
     <button
@@ -56,8 +29,8 @@ export default function CleanButton() {
         transition-all duration-200 cursor-pointer select-none
         ${
           isLoading
-            ? "bg-[var(--card)] text-[var(--muted)] border border-[var(--border)] cursor-not-allowed"
-            : "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:-translate-y-0.5"
+            ? "bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed"
+            : "bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)] hover:-translate-y-0.5"
         }
       `}
     >

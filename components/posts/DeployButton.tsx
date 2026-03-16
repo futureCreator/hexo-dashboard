@@ -1,82 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useToast } from "@/components/ui/Toast";
-
-type DeployStatus = "idle" | "running" | "success" | "error";
+import { useDeploy } from "@/hooks/useDeploy";
 
 const easeOut = [0.16, 1, 0.3, 1];
 
-function stripAnsi(str: string) {
-  return str.replace(/\x1b\[[0-9;]*[mGKHFJ]/g, "");
-}
-
-function getLineClass(line: string) {
-  const l = line.toLowerCase();
-  if (l.includes("error") || l.includes("fatal")) return "text-red-400";
-  if (l.includes("warn")) return "text-yellow-400";
-  if (l.match(/^\s*(info|inf)\s/i)) return "text-sky-400";
-  return "text-white/70";
-}
-
 export default function DeployButton() {
-  const [status, setStatus] = useState<DeployStatus>("idle");
-  const [logs, setLogs] = useState<string[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const { showToast } = useToast();
+  const { status, logs, showModal, handleDeploy, handleClose, getLineClass } = useDeploy();
   const logEndRef = useRef<HTMLDivElement>(null);
   const isLoading = status === "running";
-
-  async function handleDeploy() {
-    if (isLoading || showModal) return;
-
-    setStatus("running");
-    setLogs([]);
-    setShowModal(true);
-
-    try {
-      const res = await fetch("/api/deploy", { method: "POST" });
-
-      if (!res.body) throw new Error("No response body");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const event of events) {
-          if (!event.startsWith("data: ")) continue;
-          try {
-            const data = JSON.parse(event.slice(6));
-            if (data.type === "log") {
-              const line = stripAnsi(data.line);
-              if (line.trim()) setLogs((prev) => [...prev, line]);
-            } else if (data.type === "done") {
-              if (data.success) {
-                setStatus("success");
-                showToast({ type: "success", message: "Deploy succeeded." });
-              } else {
-                setStatus("error");
-                showToast({ type: "error", message: "Deploy failed." });
-              }
-            }
-          } catch {}
-        }
-      }
-    } catch (err: unknown) {
-      if ((err as Error).name === "AbortError") return;
-      setStatus("error");
-      showToast({ type: "error", message: "Network error: Failed to reach deploy API." });
-    }
-  }
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -94,12 +27,6 @@ export default function DeployButton() {
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, showModal]);
-
-  function handleClose() {
-    if (isLoading) return;
-    setShowModal(false);
-    setTimeout(() => setStatus("idle"), 200);
-  }
 
   return (
     <>
