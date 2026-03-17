@@ -1,6 +1,6 @@
 {
   "name": "hexo-dashboard",
-  "version": "0.1.20",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -54,7 +54,7 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
-### v0.1.20 - 2026-03-17
+### v1.0.0 - 2026-03-17
 - **Mobile-first Posts page redesign** — fully reworked layout for mobile with Apple HIG compliance
 - Added **iOS-style swipe actions** on post cards — swipe left to delete, swipe right to toggle publish/draft; includes rubber-band physics, auto-close on scroll, and single-card-open enforcement
 - Added **FAB (Floating Action Button)** for new post creation on mobile — positioned above bottom tab bar with spring animation
