@@ -1,0 +1,6 @@
+[     617ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3847/_next/static/chunks/main-app.js?v=1773718305653:0
+[     618ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3847/_next/static/chunks/app-pages-internals.js:0
+[     620ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3847/_next/static/chunks/app/(dashboard)/layout.js:0
+[     788ms] Invalid or unexpected token
+[   89791ms] [ERROR] Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING @ http://localhost:3847/posts:0
+[   89798ms] [ERROR] Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING @ http://localhost:3847/_next/static/chunks/app/(dashboard)/posts/page.js:0

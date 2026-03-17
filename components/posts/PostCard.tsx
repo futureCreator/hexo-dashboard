@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/Badge";
@@ -18,6 +18,8 @@ interface PostCardProps {
   index?: number;
   siteConfig?: SiteConfig;
   isLast?: boolean;
+  activeSwipeId?: string | null;
+  onSwipeOpen?: (id: string | null) => void;
 }
 
 function buildPostUrl(siteConfig: SiteConfig, post: HexoPost): string {
@@ -44,6 +46,9 @@ const fadeInUp = {
   }),
 };
 
+const ACTION_WIDTH = 72;
+const SWIPE_THRESHOLD = 40;
+
 export default function PostCard({
   post,
   onDeleted,
@@ -51,6 +56,8 @@ export default function PostCard({
   index = 0,
   siteConfig,
   isLast = false,
+  activeSwipeId,
+  onSwipeOpen,
 }: PostCardProps) {
   const { showToast } = useToast();
   const isMobile = useIsMobile();
@@ -63,6 +70,15 @@ export default function PostCard({
   const [referencedBy, setReferencedBy] = useState<{ filename: string; title: string }[] | undefined>(undefined);
   const [isCheckingRefs, setIsCheckingRefs] = useState(false);
 
+  // Swipe refs (mobile only, direct DOM manipulation for 60fps)
+  const contentRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef({ x: 0, y: 0 });
+  const restingXRef = useRef(0);
+  const currentXRef = useRef(0);
+  const isSwipingRef = useRef(false);
+  const directionLockedRef = useRef(false);
+  const wasSwipingRef = useRef(false);
+
   useEffect(() => {
     if (!post.date) return;
     const d = new Date(post.date);
@@ -74,6 +90,98 @@ export default function PostCard({
       })
     );
   }, [post.date]);
+
+  // Close this card's swipe when another card opens
+  useEffect(() => {
+    if (isMobile && activeSwipeId !== post.filepath && currentXRef.current !== 0) {
+      animateTo(0);
+    }
+  }, [activeSwipeId, isMobile, post.filepath]);
+
+  const setTransformDirect = useCallback((x: number) => {
+    if (!contentRef.current) return;
+    contentRef.current.style.transition = "none";
+    contentRef.current.style.transform = `translateX(${x}px)`;
+    currentXRef.current = x;
+  }, []);
+
+  const animateTo = useCallback((x: number) => {
+    if (!contentRef.current) return;
+    contentRef.current.style.transition = "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+    contentRef.current.style.transform = `translateX(${x}px)`;
+    currentXRef.current = x;
+    restingXRef.current = x;
+  }, []);
+
+  // Touch event handling via native listeners (non-passive for preventDefault)
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = contentRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      restingXRef.current = currentXRef.current;
+      isSwipingRef.current = false;
+      directionLockedRef.current = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartRef.current.x;
+      const dy = touch.clientY - touchStartRef.current.y;
+
+      if (!directionLockedRef.current) {
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+          directionLockedRef.current = true;
+          isSwipingRef.current = Math.abs(dx) > Math.abs(dy);
+        }
+        return;
+      }
+
+      if (!isSwipingRef.current) return;
+      e.preventDefault();
+
+      let newX = restingXRef.current + dx;
+
+      // Rubber-band effect beyond action width
+      if (newX > ACTION_WIDTH) {
+        newX = ACTION_WIDTH + (newX - ACTION_WIDTH) * 0.2;
+      } else if (newX < -ACTION_WIDTH) {
+        newX = -ACTION_WIDTH + (newX + ACTION_WIDTH) * 0.2;
+      }
+
+      setTransformDirect(newX);
+    };
+
+    const onTouchEnd = () => {
+      if (!isSwipingRef.current) return;
+      wasSwipingRef.current = true;
+      setTimeout(() => { wasSwipingRef.current = false; }, 300);
+
+      const x = currentXRef.current;
+      if (x > SWIPE_THRESHOLD) {
+        animateTo(ACTION_WIDTH);
+        onSwipeOpen?.(post.filepath);
+      } else if (x < -SWIPE_THRESHOLD) {
+        animateTo(-ACTION_WIDTH);
+        onSwipeOpen?.(post.filepath);
+      } else {
+        animateTo(0);
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [isMobile, post.filepath, onSwipeOpen, setTransformDirect, animateTo]);
 
   async function openDeleteModal() {
     setReferencedBy(undefined);
@@ -140,11 +248,26 @@ export default function PostCard({
   const postUrl = siteConfig ? buildPostUrl(siteConfig, post) : "";
 
   const handleCardClick = () => {
+    // Prevent navigation after a swipe gesture
+    if (wasSwipingRef.current) return;
+    // If card is swiped open, close it instead of navigating
+    if (isMobile && currentXRef.current !== 0) {
+      animateTo(0);
+      onSwipeOpen?.(null);
+      return;
+    }
     if (isMobile) {
       router.push(`/edit?path=${encodeURIComponent(post.filepath)}`);
     } else {
       setEditModalOpen(true);
     }
+  };
+
+  const handleSwipeAction = (action: "toggle" | "delete") => {
+    animateTo(0);
+    onSwipeOpen?.(null);
+    if (action === "toggle") handleToggle();
+    if (action === "delete") openDeleteModal();
   };
 
   return (
@@ -154,91 +277,146 @@ export default function PostCard({
         variants={fadeInUp}
         initial="hidden"
         animate="visible"
-        className={`group flex items-stretch gap-0 transition-colors duration-100 active:bg-[var(--muted)] hover:bg-[var(--background)] ${
-          !isLast ? "border-b border-[var(--border)]" : ""
-        }`}
+        className={`relative overflow-hidden ${!isLast ? "border-b border-[var(--border)]" : ""}`}
       >
-        {/* Status indicator strip */}
-        <div className={`w-[3px] shrink-0 my-[10px] rounded-r-full ${post.draft ? "bg-amber-400" : "bg-[var(--success)]"}`} />
-
-        {/* Main content — tap to edit */}
-        <button
-          className="flex-1 min-w-0 text-left px-4 py-3.5 cursor-pointer"
-          onClick={handleCardClick}
-        >
-          <div className="flex items-start gap-2 mb-1">
-            <p className="text-[15px] font-medium font-kopub text-[var(--foreground)] leading-snug flex-1 min-w-0 text-left">
-              {post.title}
-            </p>
-            {postUrl && (
-              <a
-                href={postUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="shrink-0 mt-0.5 text-[var(--muted-foreground)] hover:text-[var(--accent)] transition-colors"
-                title="Open live post"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        {/* ── Mobile swipe actions (positioned behind content) ── */}
+        {isMobile && (
+          <>
+            {/* Left action — Toggle publish/draft (revealed on RIGHT swipe) */}
+            <button
+              onClick={() => handleSwipeAction("toggle")}
+              disabled={isToggling}
+              className="absolute inset-y-0 left-0 w-[72px] flex flex-col items-center justify-center gap-1 text-white z-0 md:hidden disabled:opacity-50"
+              style={{ background: post.draft ? "var(--success)" : "var(--warning)" }}
+            >
+              {post.draft ? (
+                <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-              </a>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-[12px] text-[var(--muted-foreground)]">{formattedDate}</span>
-            {post.draft && (
-              <span className="inline-flex items-center px-1.5 py-px rounded-[5px] text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 leading-none">
-                Draft
+              ) : (
+                <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              )}
+              <span className="text-[11px] font-semibold">
+                {post.draft ? "Publish" : "Draft"}
               </span>
-            )}
-            {post.categories.map((cat) => (
-              <Badge key={cat} variant="category">{cat}</Badge>
-            ))}
-            {post.content.length > 0 && (
-              <span className="text-[11px] text-[var(--muted-foreground)] font-mono">
-                {post.content.length.toLocaleString()}자
-              </span>
-            )}
-          </div>
-        </button>
+            </button>
 
-        {/* Action buttons — always visible, 44px touch targets */}
-        <div className="shrink-0 flex items-center pr-3 gap-1">
-          {/* Toggle Draft/Published */}
+            {/* Right action — Delete (revealed on LEFT swipe) */}
+            <button
+              onClick={() => handleSwipeAction("delete")}
+              className="absolute inset-y-0 right-0 w-[72px] flex flex-col items-center justify-center gap-1 text-white bg-[var(--error)] z-0 md:hidden"
+            >
+              <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span className="text-[11px] font-semibold">Delete</span>
+            </button>
+          </>
+        )}
+
+        {/* ── Card content (swipeable on mobile) ── */}
+        <div
+          ref={contentRef}
+          className={`relative flex items-stretch gap-0 bg-[var(--card)] z-10 ${
+            isMobile ? "" : "transition-colors duration-100 hover:bg-[var(--background)]"
+          }`}
+          style={{ willChange: isMobile ? "transform" : undefined }}
+        >
+          {/* Status indicator strip */}
+          <div className={`w-[3px] shrink-0 my-[10px] rounded-r-full ${post.draft ? "bg-amber-400" : "bg-[var(--success)]"}`} />
+
+          {/* Main content — tap to edit */}
           <button
-            onClick={handleToggle}
-            disabled={isToggling}
-            title={post.draft ? "Publish" : "Move to drafts"}
-            className="flex items-center justify-center w-[36px] h-[44px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] active:scale-95 transition-all duration-100 disabled:opacity-40"
+            className="flex-1 min-w-0 text-left px-4 py-3.5 cursor-pointer"
+            onClick={handleCardClick}
           >
-            {post.draft ? (
-              <svg className="w-[17px] h-[17px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            ) : (
-              <svg className="w-[17px] h-[17px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              </svg>
-            )}
+            <div className="flex items-start gap-2 mb-1">
+              <p className="text-[15px] font-medium font-kopub text-[var(--foreground)] leading-snug flex-1 min-w-0 text-left">
+                {post.title}
+              </p>
+              {/* External link — desktop only */}
+              {!isMobile && postUrl && (
+                <a
+                  href={postUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 mt-0.5 text-[var(--muted-foreground)] hover:text-[var(--accent)] transition-colors"
+                  title="Open live post"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-[12px] text-[var(--muted-foreground)]">{formattedDate}</span>
+              {post.draft && (
+                <span className="inline-flex items-center px-1.5 py-px rounded-[5px] text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 leading-none">
+                  Draft
+                </span>
+              )}
+              {post.categories.map((cat) => (
+                <Badge key={cat} variant="category">{cat}</Badge>
+              ))}
+              {post.content.length > 0 && (
+                <span className="text-[11px] text-[var(--muted-foreground)] font-mono">
+                  {post.content.length.toLocaleString()}자
+                </span>
+              )}
+            </div>
           </button>
 
-          {/* Delete */}
-          <button
-            onClick={openDeleteModal}
-            title="Delete"
-            className="flex items-center justify-center w-[36px] h-[44px] text-[var(--error)]/60 hover:text-[var(--error)] active:scale-95 transition-all duration-100"
-          >
-            <svg className="w-[17px] h-[17px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          {/* Desktop — action buttons (always visible) */}
+          <div className="hidden md:flex shrink-0 items-center pr-3 gap-1">
+            <button
+              onClick={handleToggle}
+              disabled={isToggling}
+              title={post.draft ? "Publish" : "Move to drafts"}
+              className="flex items-center justify-center w-[36px] h-[44px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] active:scale-95 transition-all duration-100 disabled:opacity-40"
+            >
+              {post.draft ? (
+                <svg className="w-[17px] h-[17px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              ) : (
+                <svg className="w-[17px] h-[17px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              )}
+            </button>
+
+            <button
+              onClick={openDeleteModal}
+              title="Delete"
+              className="flex items-center justify-center w-[36px] h-[44px] text-[var(--error)]/60 hover:text-[var(--error)] active:scale-95 transition-all duration-100"
+            >
+              <svg className="w-[17px] h-[17px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Mobile — chevron indicator */}
+          <div className="md:hidden flex items-center pr-3">
+            <svg className="w-[14px] h-[14px] text-[var(--tertiary-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
             </svg>
-          </button>
+          </div>
         </div>
       </motion.div>
 

@@ -39,6 +39,9 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
   const isMobile = useIsMobile();
   const router = useRouter();
 
+  // Swipe coordination — only one card swiped open at a time
+  const [activeSwipeId, setActiveSwipeId] = useState<string | null>(null);
+
   const handleNewPost = useCallback(() => {
     if (isMobile) {
       router.push("/write");
@@ -87,6 +90,16 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleNewPost]);
+
+  // Close swiped card on scroll
+  useEffect(() => {
+    if (!isMobile) return;
+    const onScroll = () => {
+      if (activeSwipeId) setActiveSwipeId(null);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isMobile, activeSwipeId]);
 
   const now = new Date();
   const filtered = posts.filter((p) => {
@@ -144,36 +157,35 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
 
   return (
     <div>
-      {/* Action buttons row */}
+      {/* ── Action buttons row — desktop only ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: easeOut }}
-        className="grid grid-cols-[1fr_auto_auto_auto] md:flex md:items-center gap-2 mb-4"
+        className="hidden md:flex md:items-center gap-2 mb-4"
       >
         <button
           onClick={handleNewPost}
           title="New Post (n)"
-          className="inline-flex items-center justify-center gap-2 px-4 h-[44px] w-full md:w-auto rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-4 h-[44px] w-auto rounded-xl bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer shrink-0"
         >
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span className="text-[13px] md:text-sm">New Post</span>
+          <span className="text-sm">New Post</span>
         </button>
         <CleanButton />
         <CommitButton />
         <DeployButton />
       </motion.div>
 
-      {/* Search Bar */}
+      {/* ── Search Bar ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: easeOut, delay: 0.04 }}
+        transition={{ duration: 0.35, ease: easeOut, delay: isMobile ? 0 : 0.04 }}
         className="flex items-center gap-2 mb-3"
       >
-        {/* Search bar */}
         <div
           className={`flex items-center gap-2 flex-1 h-[36px] px-3 rounded-[10px] bg-[var(--muted)] transition-all duration-200 ${
             isSearchFocused ? "ring-1 ring-[var(--accent)]" : ""
@@ -204,7 +216,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
           )}
         </div>
 
-        {/* Cancel (when searching) — mobile only */}
+        {/* Cancel button — mobile only, shown when searching */}
         <AnimatePresence>
           {query && (
             <motion.button
@@ -221,20 +233,20 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
         </AnimatePresence>
       </motion.div>
 
-      {/* Filters row: segmented control + date + live + count */}
+      {/* ── Filters row ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: easeOut, delay: 0.05 }}
-        className="flex items-center gap-2 mb-5 flex-wrap"
+        transition={{ duration: 0.35, ease: easeOut, delay: isMobile ? 0.02 : 0.05 }}
+        className="flex items-center gap-2 mb-4 md:mb-5 md:flex-wrap"
       >
-        {/* iOS segmented control */}
-        <div className="segmented-control" style={{ width: "fit-content" }}>
+        {/* iOS segmented control — full width on mobile, fit on desktop */}
+        <div className="segmented-control flex-1 md:flex-initial md:w-fit">
           {filterTabs.map(({ key, label, count }) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`segmented-control-item min-w-[64px] px-3 gap-1.5 ${filter === key ? "active" : ""}`}
+              className={`segmented-control-item md:min-w-[64px] px-3 gap-1.5 ${filter === key ? "active" : ""}`}
             >
               {label}
               <span className={`text-[11px] font-mono px-1 py-px rounded-full leading-none ${
@@ -248,8 +260,8 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
           ))}
         </div>
 
-        {/* Date filter */}
-        <div className="relative">
+        {/* Date filter — desktop only */}
+        <div className="relative hidden md:block">
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as DateRange)}
@@ -266,8 +278,8 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
           </select>
         </div>
 
-        {/* Live indicator */}
-        <div className="ml-auto flex items-center gap-3">
+        {/* Post count + live indicator */}
+        <div className="hidden md:flex items-center gap-3 md:ml-auto">
           {watching && (
             <span className="flex items-center gap-1.5 text-[11px] text-emerald-500 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -280,7 +292,7 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
         </div>
       </motion.div>
 
-      {/* Post list */}
+      {/* ── Post list ── */}
       {filtered.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
@@ -317,9 +329,28 @@ export default function PostList({ initialPosts, siteConfig }: PostListProps) {
               index={i}
               siteConfig={siteConfig}
               isLast={i === filtered.length - 1}
+              activeSwipeId={activeSwipeId}
+              onSwipeOpen={setActiveSwipeId}
             />
           ))}
         </div>
+      )}
+
+      {/* ── FAB — mobile only (New Post) ── */}
+      {isMobile && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25, delay: 0.3 }}
+          onClick={handleNewPost}
+          className="fixed z-20 right-4 w-[52px] h-[52px] rounded-full bg-[var(--accent)] text-white flex items-center justify-center shadow-accent active:scale-90 transition-transform md:hidden"
+          style={{ bottom: "calc(49px + env(safe-area-inset-bottom) + 16px)" }}
+          aria-label="New Post"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+        </motion.button>
       )}
 
       <NewPostModal

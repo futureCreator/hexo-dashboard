@@ -54,6 +54,23 @@ On first run, go to **Settings** and set the path to your Hexo project directory
 
 ## Changelog
 
+### v0.1.20 - 2026-03-17
+- **Mobile-first Posts page redesign** — fully reworked layout for mobile with Apple HIG compliance
+- Added **iOS-style swipe actions** on post cards — swipe left to delete, swipe right to toggle publish/draft; includes rubber-band physics, auto-close on scroll, and single-card-open enforcement
+- Added **FAB (Floating Action Button)** for new post creation on mobile — positioned above bottom tab bar with spring animation
+- Added **chevron indicators** on mobile post rows for navigation affordance
+- Hidden desktop-only controls on mobile: Clean/Commit/Deploy buttons, date range filter, live indicator
+- Added full-screen mobile editor routing — tapping a post navigates to `/edit?path=...` instead of opening a modal
+- Added **mobile home components**: streak card, quick action hub, recent drafts
+- Added **full-screen `/write` page** for mobile new post creation
+- Added **Markdown accessory bar** with keyboard height detection for mobile editing
+- Extracted `PostEditor` from `EditModal` and `WriteForm` from `NewPostModal` for code reuse
+- Reorganized routes into `(dashboard)` and `(fullscreen)` route groups
+- Extracted `useClean`, `useCommit`, `useDeploy` action hooks from button components
+- Added `useMediaQuery` and `useIsMobile` hooks
+- Added Pretendard variable font for Korean typography
+- Fixed `.env.production` basePath configuration
+
 ### v0.1.19 - 2026-03-12
 - Localized **AI Writing Coach** card UI strings from Korean to English (`WritingCoachCard`)
 - Fixed `{% post_link %}` slug generation in `EditModal` — strips date prefix (e.g. `20260101-`) from filenames so generated tags resolve correctly
