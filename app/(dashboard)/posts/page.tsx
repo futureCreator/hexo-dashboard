@@ -22,7 +22,7 @@ export default async function PostsPage() {
   return (
       <div className="px-4 py-5 sm:px-8 sm:py-8 max-w-6xl">
         {/* Header */}
-        <div className="mb-5">
+        <div className="mb-5 hidden md:block">
           <h1 className="text-[28px] sm:text-[32px] font-bold text-[var(--foreground)] leading-tight tracking-[-0.5px] mb-1">
             Your <span className="gradient-text">Blog Posts</span>
           </h1>

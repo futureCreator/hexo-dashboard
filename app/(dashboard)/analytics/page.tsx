@@ -18,6 +18,7 @@ import type { TooltipProps } from "recharts";
 import Card from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { apiUrl } from "@/lib/api";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
@@ -139,6 +140,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 export default function AnalyticsPage() {
   const { resolvedTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [period, setPeriod] = useState<7 | 14 | 30 | 90>(7);
   const [tab, setTab] = useState<"ga" | "gsc" | "content">("ga");
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -174,23 +176,24 @@ export default function AnalyticsPage() {
   const mutedFg = resolvedTheme === "dark" ? "#636366" : "#8E8E93";
   const gscClickColor = resolvedTheme === "dark" ? "#30D158" : "#34C759";
   const gscImpressionColor = resolvedTheme === "dark" ? "#63E6BE" : "#30D158";
+  const chartHeight = isMobile ? 160 : 200;
 
   return (
       <div className="px-4 py-5 sm:px-8 sm:py-8 max-w-5xl">
 
-        {/* Header */}
+        {/* Header — hidden on mobile (top nav bar shows "Analytics") */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: easeOut }}
-          className="mb-5"
+          className="mb-5 hidden md:block"
         >
           <h1 className="text-[28px] sm:text-[32px] font-bold text-[var(--foreground)] leading-tight tracking-[-0.5px] mb-1">
             Site <span className="gradient-text">Analytics</span>
           </h1>
         </motion.div>
 
-        {/* Tabs + Period — scrollable on mobile */}
+        {/* Tabs + Period */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -201,8 +204,8 @@ export default function AnalyticsPage() {
           <div className="segmented-control flex-shrink-0">
             {(
               [
-                { key: "ga" as const, label: "Google Analytics" },
-                { key: "gsc" as const, label: "Search Console" },
+                { key: "ga" as const, label: isMobile ? "GA" : "Google Analytics" },
+                { key: "gsc" as const, label: isMobile ? "Search" : "Search Console" },
                 { key: "content" as const, label: "Content" },
               ]
             ).map(({ key, label }) => (
@@ -338,7 +341,7 @@ export default function AnalyticsPage() {
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut, delay: 0.25 }}>
                 <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
                   <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">Daily Trends</h2>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={chartHeight}>
                     <LineChart data={data.trend.map((r) => ({ ...r, date: formatDate(r.date) }))} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                       <CartesianGrid stroke={mutedColor} strokeDasharray="3 3" />
                       <XAxis dataKey="date" tick={{ fontSize: 11, fill: mutedFg }} axisLine={false} tickLine={false} />
@@ -362,35 +365,64 @@ export default function AnalyticsPage() {
               </motion.div>
             )}
 
+            {/* GA Top Pages */}
             {data.topPages && data.topPages.length > 0 && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut, delay: 0.3 }}>
-                <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
-                  <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">Top Pages</h2>
-                  <div className="overflow-x-auto -mx-1">
-                    <table className="w-full text-sm min-w-[400px]">
-                      <thead>
-                        <tr className="border-b border-[var(--border)]">
-                          <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)] w-7">#</th>
-                          <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Page</th>
-                          <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Views</th>
-                          <th className="text-right py-2 text-[11px] font-medium text-[var(--muted-foreground)]">Sessions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.topPages.map((row, i) => (
-                          <tr key={row.page} className="border-b border-[var(--border)] last:border-0">
-                            <td className="py-2.5 pr-3 text-[12px] text-[var(--muted-foreground)] tabular-nums">{i + 1}</td>
-                            <td className="py-2.5 pr-3 text-[12px] text-[var(--foreground)] max-w-[180px] truncate">
-                              {row.title ? <span title={row.page}>{row.title}</span> : <span className="font-mono text-[var(--muted-foreground)]">{row.page}</span>}
-                            </td>
-                            <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.views.toLocaleString()}</td>
-                            <td className="py-2.5 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.sessions.toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {isMobile ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                    <div className="px-4 pt-3 pb-2">
+                      <h2 className="text-[13px] font-semibold text-[var(--foreground)]">Top Pages</h2>
+                    </div>
+                    {data.topPages.map((row, i) => (
+                      <div key={row.page}>
+                        {i > 0 && <div className="h-px bg-[var(--border)] ml-12" />}
+                        <div className="flex items-start gap-3 px-4 py-3">
+                          <span className="text-[12px] text-[var(--muted-foreground)] tabular-nums w-5 text-right shrink-0 pt-0.5">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[14px] font-medium text-[var(--foreground)] leading-snug truncate">
+                              {row.title || row.page}
+                            </p>
+                            {row.title && (
+                              <p className="text-[11px] text-[var(--muted-foreground)] font-mono truncate mt-0.5">{row.page}</p>
+                            )}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[15px] font-semibold text-[var(--foreground)] tabular-nums leading-none">{row.views.toLocaleString()}</p>
+                            <p className="text-[11px] text-[var(--muted-foreground)] tabular-nums mt-1">{row.sessions.toLocaleString()} sess</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
+                    <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">Top Pages</h2>
+                    <div className="overflow-x-auto -mx-1">
+                      <table className="w-full text-sm min-w-[400px]">
+                        <thead>
+                          <tr className="border-b border-[var(--border)]">
+                            <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)] w-7">#</th>
+                            <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Page</th>
+                            <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Views</th>
+                            <th className="text-right py-2 text-[11px] font-medium text-[var(--muted-foreground)]">Sessions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.topPages.map((row, i) => (
+                            <tr key={row.page} className="border-b border-[var(--border)] last:border-0">
+                              <td className="py-2.5 pr-3 text-[12px] text-[var(--muted-foreground)] tabular-nums">{i + 1}</td>
+                              <td className="py-2.5 pr-3 text-[12px] text-[var(--foreground)] max-w-[180px] truncate">
+                                {row.title ? <span title={row.page}>{row.title}</span> : <span className="font-mono text-[var(--muted-foreground)]">{row.page}</span>}
+                              </td>
+                              <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.views.toLocaleString()}</td>
+                              <td className="py-2.5 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.sessions.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </div>
@@ -423,7 +455,7 @@ export default function AnalyticsPage() {
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut, delay: 0.25 }}>
                 <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
                   <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">Search Trend — last {period} days</h2>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={chartHeight}>
                     <LineChart data={gscData.trend} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                       <CartesianGrid stroke={mutedColor} strokeDasharray="3 3" />
                       <XAxis dataKey="date" tick={{ fontSize: 11, fill: mutedFg }} axisLine={false} tickLine={false} />
@@ -437,37 +469,68 @@ export default function AnalyticsPage() {
               </motion.div>
             )}
 
+            {/* GSC Top Queries */}
             {gscData.topQueries && gscData.topQueries.length > 0 && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut, delay: 0.3 }}>
-                <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
-                  <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">Top Queries</h2>
-                  <div className="overflow-x-auto -mx-1">
-                    <table className="w-full min-w-[500px]">
-                      <thead>
-                        <tr className="border-b border-[var(--border)]">
-                          <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)] w-7">#</th>
-                          <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Query</th>
-                          <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Clicks</th>
-                          <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Impr.</th>
-                          <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">CTR</th>
-                          <th className="text-right py-2 text-[11px] font-medium text-[var(--muted-foreground)]">Pos.</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {gscData.topQueries.map((row, i) => (
-                          <tr key={row.query} className="border-b border-[var(--border)] last:border-0">
-                            <td className="py-2.5 pr-3 text-[12px] text-[var(--muted-foreground)] tabular-nums">{i + 1}</td>
-                            <td className="py-2.5 pr-3 text-[12px] text-[var(--foreground)] max-w-[180px] truncate">{row.query}</td>
-                            <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.clicks.toLocaleString()}</td>
-                            <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.impressions.toLocaleString()}</td>
-                            <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--muted-foreground)]">{(row.ctr * 100).toFixed(1)}%</td>
-                            <td className="py-2.5 text-right text-[12px] tabular-nums text-[var(--muted-foreground)]">{row.position.toFixed(1)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {isMobile ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                    <div className="px-4 pt-3 pb-2">
+                      <h2 className="text-[13px] font-semibold text-[var(--foreground)]">Top Queries</h2>
+                    </div>
+                    {gscData.topQueries.map((row, i) => (
+                      <div key={row.query}>
+                        {i > 0 && <div className="h-px bg-[var(--border)] ml-12" />}
+                        <div className="flex items-start gap-3 px-4 py-3">
+                          <span className="text-[12px] text-[var(--muted-foreground)] tabular-nums w-5 text-right shrink-0 pt-0.5">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[14px] font-medium text-[var(--foreground)] leading-snug truncate">{row.query}</p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[11px] text-[var(--muted-foreground)] tabular-nums">{row.impressions.toLocaleString()} impr</span>
+                              <span className="text-[11px] text-[var(--border)]">·</span>
+                              <span className="text-[11px] text-[var(--muted-foreground)] tabular-nums">{(row.ctr * 100).toFixed(1)}%</span>
+                              <span className="text-[11px] text-[var(--border)]">·</span>
+                              <span className="text-[11px] text-[var(--muted-foreground)] tabular-nums">#{row.position.toFixed(1)}</span>
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[15px] font-semibold text-[var(--foreground)] tabular-nums leading-none">{row.clicks.toLocaleString()}</p>
+                            <p className="text-[11px] text-[var(--muted-foreground)] mt-1">clicks</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
+                    <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">Top Queries</h2>
+                    <div className="overflow-x-auto -mx-1">
+                      <table className="w-full min-w-[500px]">
+                        <thead>
+                          <tr className="border-b border-[var(--border)]">
+                            <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)] w-7">#</th>
+                            <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Query</th>
+                            <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Clicks</th>
+                            <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">Impr.</th>
+                            <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">CTR</th>
+                            <th className="text-right py-2 text-[11px] font-medium text-[var(--muted-foreground)]">Pos.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gscData.topQueries.map((row, i) => (
+                            <tr key={row.query} className="border-b border-[var(--border)] last:border-0">
+                              <td className="py-2.5 pr-3 text-[12px] text-[var(--muted-foreground)] tabular-nums">{i + 1}</td>
+                              <td className="py-2.5 pr-3 text-[12px] text-[var(--foreground)] max-w-[180px] truncate">{row.query}</td>
+                              <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.clicks.toLocaleString()}</td>
+                              <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.impressions.toLocaleString()}</td>
+                              <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--muted-foreground)]">{(row.ctr * 100).toFixed(1)}%</td>
+                              <td className="py-2.5 text-right text-[12px] tabular-nums text-[var(--muted-foreground)]">{row.position.toFixed(1)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </div>
@@ -512,7 +575,7 @@ export default function AnalyticsPage() {
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut, delay: 0.2 }}>
                     <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
                       <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">월별 평균 글 길이 추세</h2>
-                      <ResponsiveContainer width="100%" height={200}>
+                      <ResponsiveContainer width="100%" height={chartHeight}>
                         <BarChart data={contentStats.monthlyTrend} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                           <CartesianGrid stroke={mutedColor} strokeDasharray="3 3" vertical={false} />
                           <XAxis dataKey="month" tick={{ fontSize: 11, fill: mutedFg }} axisLine={false} tickLine={false} />
@@ -538,31 +601,52 @@ export default function AnalyticsPage() {
                   </motion.div>
                 )}
 
+                {/* Content Monthly Detail */}
                 {contentStats.monthlyTrend.length > 0 && (
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut, delay: 0.3 }}>
-                    <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
-                      <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">월별 상세</h2>
-                      <div className="overflow-x-auto -mx-1">
-                        <table className="w-full min-w-[280px]">
-                          <thead>
-                            <tr className="border-b border-[var(--border)]">
-                              <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">월</th>
-                              <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">글 수</th>
-                              <th className="text-right py-2 text-[11px] font-medium text-[var(--muted-foreground)]">평균 글자 수</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {[...contentStats.monthlyTrend].reverse().map((row) => (
-                              <tr key={row.month} className="border-b border-[var(--border)] last:border-0">
-                                <td className="py-2.5 pr-3 text-[12px] font-mono text-[var(--foreground)]">{row.month}</td>
-                                <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--muted-foreground)]">{row.postCount}</td>
-                                <td className="py-2.5 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.avgChars.toLocaleString()}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                    {isMobile ? (
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                        <div className="px-4 pt-3 pb-2">
+                          <h2 className="text-[13px] font-semibold text-[var(--foreground)]">월별 상세</h2>
+                        </div>
+                        {[...contentStats.monthlyTrend].reverse().map((row, i) => (
+                          <div key={row.month}>
+                            {i > 0 && <div className="h-px bg-[var(--border)] ml-4" />}
+                            <div className="flex items-center justify-between px-4 py-3">
+                              <span className="text-[14px] font-mono font-medium text-[var(--foreground)]">{row.month}</span>
+                              <div className="text-right">
+                                <p className="text-[15px] font-semibold text-[var(--foreground)] tabular-nums leading-none">{row.avgChars.toLocaleString()}자</p>
+                                <p className="text-[11px] text-[var(--muted-foreground)] tabular-nums mt-1">{row.postCount}편</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-5">
+                        <h2 className="text-[13px] font-semibold text-[var(--foreground)] mb-4">월별 상세</h2>
+                        <div className="overflow-x-auto -mx-1">
+                          <table className="w-full min-w-[280px]">
+                            <thead>
+                              <tr className="border-b border-[var(--border)]">
+                                <th className="text-left py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">월</th>
+                                <th className="text-right py-2 pr-3 text-[11px] font-medium text-[var(--muted-foreground)]">글 수</th>
+                                <th className="text-right py-2 text-[11px] font-medium text-[var(--muted-foreground)]">평균 글자 수</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[...contentStats.monthlyTrend].reverse().map((row) => (
+                                <tr key={row.month} className="border-b border-[var(--border)] last:border-0">
+                                  <td className="py-2.5 pr-3 text-[12px] font-mono text-[var(--foreground)]">{row.month}</td>
+                                  <td className="py-2.5 pr-3 text-right text-[12px] tabular-nums text-[var(--muted-foreground)]">{row.postCount}</td>
+                                  <td className="py-2.5 text-right text-[12px] tabular-nums text-[var(--foreground)]">{row.avgChars.toLocaleString()}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </>
