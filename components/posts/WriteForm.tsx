@@ -517,13 +517,13 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
             {/* Opinion textarea */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                Opinion <span className="text-red-400">*</span>
+                내 의견 <span className="text-red-400">*</span>
               </label>
               <textarea
                 ref={opinionRef}
                 value={opinion}
                 onChange={(e) => setOpinion(e.target.value)}
-                placeholder="당신의 의견을 작성해 주세요. 최소 50자 이상 입력해야 합니다."
+                placeholder="내 생각이나 의견을 자유롭게 작성하세요..."
                 rows={6}
                 maxLength={5000}
                 className="w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none"
