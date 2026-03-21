@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
 import { loadSettings } from "@/lib/settings";
-import { createPost, hexoPathValid, readPosts, type HexoPost } from "@/lib/hexo";
+import { createPost, hexoPathValid, readPosts } from "@/lib/hexo";
+import { findRelatedPosts, buildRelatedSection, loadReferenceTexts } from "@/lib/ai-utils";
 
 function stripHtml(html: string): string {
   return html
@@ -15,46 +15,6 @@ function stripHtml(html: string): string {
 
 function isUrl(s: string): boolean {
   return /^https?:\/\//i.test(s.trim());
-}
-
-function findRelatedPosts(posts: HexoPost[], newTags: string[], newTitle: string, count: number): HexoPost[] {
-  const lowerNewTags = newTags.map((t) => t.toLowerCase());
-  const titleWords = newTitle.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
-
-  const scored = posts.map((post) => {
-    let score = 0;
-    let tagMatchCount = 0;
-    for (const tag of post.tags) {
-      if (lowerNewTags.includes(tag.toLowerCase())) {
-        score += 3;
-        tagMatchCount++;
-      }
-    }
-    const candidateTitle = post.title.toLowerCase();
-    for (const word of titleWords) {
-      if (candidateTitle.includes(word)) score += 1;
-    }
-    return { post, score, tagMatchCount };
-  });
-
-  return scored
-    .filter(({ score }) => score >= 3) // 태그 최소 1개 일치 필요
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.tagMatchCount !== a.tagMatchCount) return b.tagMatchCount - a.tagMatchCount;
-      // 동점이면 오래된 글 우선 (최신 글 쏠림 방지)
-      const dateA = a.post.date ? new Date(a.post.date).getTime() : 0;
-      const dateB = b.post.date ? new Date(b.post.date).getTime() : 0;
-      return dateA - dateB;
-    })
-    .slice(0, count)
-    .map(({ post }) => post);
-}
-
-function buildRelatedSection(posts: HexoPost[]): string {
-  if (posts.length === 0) return "";
-  const links = posts.map((p) => `- {% post_link ${p.filename.replace(/\.md$/, "")} "${p.title}" %}`);
-  return `---\n\n관련 글\n\n${links.join("\n")}`;
 }
 
 function targetWordCount(sourceLength: number): number {
@@ -94,19 +54,7 @@ export async function POST(request: NextRequest) {
   if (!hexoPathValid(hexoPath)) return NextResponse.json({ error: "Hexo path invalid" }, { status: 400 });
 
   // Read reference posts (guard: must be within hexoPath)
-  const referenceTexts: string[] = referenceFilepaths
-    .filter((fp) => fp.startsWith(hexoPath))
-    .map((fp) => {
-      try {
-        const raw = fs.readFileSync(fp, "utf-8");
-        // Strip YAML frontmatter (--- ... ---)
-        const stripped = raw.replace(/^---[\s\S]*?---\n?/, "").trim();
-        return stripped.slice(0, 6000);
-      } catch {
-        return "";
-      }
-    })
-    .filter(Boolean);
+  const referenceTexts = loadReferenceTexts(referenceFilepaths, hexoPath);
 
   // Fetch all sources in parallel
   let fetchedTexts: string[];
