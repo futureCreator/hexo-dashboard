@@ -38,7 +38,14 @@ const GEN_STEPS = [
   { label: "Saving draft", detail: "Almost done, wrapping up…" },
 ];
 
-function AiGeneratingView({ step }: { step: number }) {
+const OPINION_GEN_STEPS = [
+  { label: "관련 자료 검색 중", detail: "Perplexity로 객관적 자료를 찾고 있습니다…" },
+  { label: "자료 분석 중", detail: "수집한 자료를 분석하고 있습니다…" },
+  { label: "글 작성 중", detail: "의견과 자료를 합쳐 글을 작성하고 있습니다…" },
+  { label: "저장 중", detail: "거의 다 됐습니다…" },
+];
+
+function AiGeneratingView({ step, steps }: { step: number; steps: { label: string; detail: string }[] }) {
   return (
     <div className="flex flex-col items-center justify-center gap-6 py-6">
       {/* Spinner */}
@@ -53,7 +60,7 @@ function AiGeneratingView({ step }: { step: number }) {
 
       {/* Steps */}
       <div className="w-full flex flex-col gap-2">
-        {GEN_STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const done = i < step;
           const active = i === step;
           return (
@@ -111,17 +118,7 @@ function AiGeneratingView({ step }: { step: number }) {
   );
 }
 
-function clientSlugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-type Mode = "manual" | "ai";
+type Mode = "source" | "opinion";
 
 // ─── WriteForm ─────────────────────────────────────────────────────────────────
 
@@ -129,29 +126,30 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
   { onCreated, onStateChange },
   ref
 ) {
-  const [mode, setMode] = useState<Mode>("ai");
+  const [mode, setMode] = useState<Mode>("source");
 
-  // Manual mode state
-  const [title, setTitle] = useState("");
-  const [tags, setTags] = useState("");
-  const [categories, setCategories] = useState("");
-  const [draft, setDraft] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // AI mode state
+  // Source mode state
   const [sources, setSources] = useState<string[]>([""]);
   const [perspective, setPerspective] = useState("");
   const [aiCategory, setAiCategory] = useState("AI");
   const [isGenerating, setIsGenerating] = useState(false);
   const [genStep, setGenStep] = useState(0);
 
+  // Opinion mode state
+  const [opinion, setOpinion] = useState("");
+  const [opinionCategory, setOpinionCategory] = useState("AI");
+  const [opinionSelectedRefs, setOpinionSelectedRefs] = useState<string[]>([]);
+  const [isOpinionGenerating, setIsOpinionGenerating] = useState(false);
+  const [opinionGenStep, setOpinionGenStep] = useState(0);
+  const [opinionRefSearch, setOpinionRefSearch] = useState("");
+
   // Reference posts state
   const [allPosts, setAllPosts] = useState<HexoPost[]>([]);
   const [selectedRefs, setSelectedRefs] = useState<string[]>([]);
   const [refSearch, setRefSearch] = useState("");
 
-  const titleRef = useRef<HTMLInputElement>(null);
   const sourceRef = useRef<HTMLTextAreaElement>(null);
+  const opinionRef = useRef<HTMLTextAreaElement>(null);
   const { showToast } = useToast();
 
   // Load posts list on mount
@@ -166,53 +164,25 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
 
   // Focus management when mode changes
   useEffect(() => {
-    if (mode === "ai") {
+    if (mode === "source") {
       setTimeout(() => sourceRef.current?.focus(), 50);
     } else {
-      setTimeout(() => titleRef.current?.focus(), 50);
+      setTimeout(() => opinionRef.current?.focus(), 50);
     }
   }, [mode]);
 
   // Computed
-  const slug = clientSlugify(title) || (title.trim() ? "untitled" : "");
-  const canManualSubmit = title.trim().length > 0 && !isSubmitting;
-  const canAiSubmit = sources.some((s) => s.trim().length > 0) && !isGenerating;
+  const canSourceSubmit = sources.some((s) => s.trim().length > 0) && !isGenerating;
+  const canOpinionSubmit = opinion.trim().length >= 50 && !isOpinionGenerating;
+  const isAnyGenerating = isGenerating || isOpinionGenerating;
 
   // Notify parent of state changes
   useEffect(() => {
     onStateChange?.({
-      canSubmit: mode === "manual" ? canManualSubmit : canAiSubmit,
-      isGenerating,
+      canSubmit: mode === "source" ? canSourceSubmit : canOpinionSubmit,
+      isGenerating: isAnyGenerating,
     });
-  }, [canManualSubmit, canAiSubmit, isGenerating, mode, onStateChange]);
-
-  const handleManualSubmit = useCallback(async () => {
-    if (!title.trim()) return;
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(apiUrl("/api/posts"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-          categories: categories.split(",").map((c) => c.trim()).filter(Boolean),
-          draft,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast({ type: "error", message: data.error || "Failed to create post" });
-        return;
-      }
-      showToast({ type: "success", message: `"${title.trim()}" created` });
-      onCreated(data.post);
-    } catch (err) {
-      showToast({ type: "error", message: String(err) });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [title, tags, categories, draft, onCreated, showToast]);
+  }, [canSourceSubmit, canOpinionSubmit, isAnyGenerating, mode, onStateChange]);
 
   const handleAiSubmit = useCallback(async () => {
     const validSources = sources.filter((s) => s.trim());
@@ -253,190 +223,351 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
     }
   }, [sources, perspective, aiCategory, selectedRefs, onCreated, showToast]);
 
+  const handleOpinionSubmit = useCallback(async () => {
+    if (opinion.trim().length < 50) return;
+    setIsOpinionGenerating(true);
+    setOpinionGenStep(0);
+
+    const stepTimers = [
+      setTimeout(() => setOpinionGenStep(1), 5000),
+      setTimeout(() => setOpinionGenStep(2), 10000),
+    ];
+
+    try {
+      const res = await fetch(apiUrl("/api/ai-write-opinion"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          opinion: opinion.trim(),
+          category: opinionCategory,
+          referencePosts: opinionSelectedRefs,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast({ type: "error", message: data.error || "Failed to generate post" });
+        return;
+      }
+      setOpinionGenStep(3); // "저장 중" — triggered on API response, not timer
+      showToast({ type: "success", message: `"${data.post.title}" 생성 완료, 드래프트로 저장됨` });
+      onCreated(data.post);
+    } catch (err) {
+      showToast({ type: "error", message: String(err) });
+    } finally {
+      stepTimers.forEach(clearTimeout);
+      setIsOpinionGenerating(false);
+      setOpinionGenStep(0);
+    }
+  }, [opinion, opinionCategory, opinionSelectedRefs, onCreated, showToast]);
+
   // Expose submit via ref
   useImperativeHandle(
     ref,
     () => ({
-      submit: mode === "manual" ? handleManualSubmit : handleAiSubmit,
+      submit: mode === "source" ? handleAiSubmit : handleOpinionSubmit,
     }),
-    [mode, handleManualSubmit, handleAiSubmit]
+    [mode, handleAiSubmit, handleOpinionSubmit]
   );
 
   return (
     <div className="flex flex-col">
       {/* Mode tabs */}
       <div className="flex border-b border-[var(--border)]">
-        {(["manual", "ai"] as Mode[]).map((m) => (
+        {([
+          { key: "source" as Mode, label: "소스 기반" },
+          { key: "opinion" as Mode, label: "의견 기반" },
+        ]).map((tab) => (
           <button
-            key={m}
-            onClick={() => setMode(m)}
+            key={tab.key}
+            onClick={() => setMode(tab.key)}
             className={`flex-1 py-2.5 text-xs font-medium transition-colors cursor-pointer ${
-              mode === m
+              mode === tab.key
                 ? "text-[var(--accent)] border-b-2 border-[var(--accent)]"
                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
           >
-            {m === "manual" ? "Manual" : "AI Write"}
+            {tab.label}
           </button>
         ))}
       </div>
 
       {/* Form body */}
       <div className="px-5 py-5 flex flex-col gap-4">
-        {mode === "manual" ? (
-          <>
-            {/* Title */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                Title <span className="text-red-400">*</span>
-              </label>
-              <input
-                ref={titleRef}
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && canManualSubmit) handleManualSubmit();
-                }}
-                placeholder="My new post"
-                className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
-              />
-              {slug && (
-                <p className="text-xs text-[var(--muted-foreground)] font-mono">
-                  <span className="opacity-50">slug: </span>
-                  {slug}.md
-                </p>
-              )}
-            </div>
-
-            {/* Tags */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                Tags
-              </label>
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="tag1, tag2, tag3"
-                className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
-              />
-            </div>
-
-            {/* Categories */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                Categories
-              </label>
-              <input
-                type="text"
-                value={categories}
-                onChange={(e) => setCategories(e.target.value)}
-                placeholder="category1, category2"
-                className="w-full h-10 px-3 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200"
-              />
-            </div>
-
-            {/* Draft toggle */}
-            <div className="flex items-center justify-between py-1">
-              <div>
-                <p className="text-sm font-medium text-[var(--foreground)]">Draft</p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {draft ? "Saved to _drafts" : "Saved to _posts"}
-                </p>
+        {mode === "source" ? (
+          isGenerating ? (
+            <AiGeneratingView step={genStep} steps={GEN_STEPS} />
+          ) : (
+            <>
+              {/* Sources */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Sources <span className="text-red-400">*</span>
+                </label>
+                <div className="flex flex-col gap-2">
+                  {sources.map((src, idx) => (
+                    <div key={idx} className="flex gap-1.5">
+                      <textarea
+                        ref={idx === 0 ? sourceRef : undefined}
+                        value={src}
+                        onChange={(e) => {
+                          const next = [...sources];
+                          next[idx] = e.target.value;
+                          setSources(next);
+                        }}
+                        placeholder={
+                          idx === 0
+                            ? "https://example.com/article  or paste text directly"
+                            : "https://... or paste text"
+                        }
+                        rows={2}
+                        className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none font-mono"
+                      />
+                      {sources.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setSources(sources.filter((_, i) => i !== idx))}
+                          className="w-7 h-7 mt-1 flex items-center justify-center rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer shrink-0"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {sources.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setSources([...sources, ""])}
+                    className="self-start flex items-center gap-1.5 text-xs text-[var(--accent)] hover:opacity-80 transition-opacity cursor-pointer mt-0.5"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add source
+                  </button>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setDraft((d) => !d)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${
-                  draft ? "bg-[var(--accent)]" : "bg-[var(--muted)]"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    draft ? "translate-x-6" : "translate-x-1"
-                  }`}
+
+              {/* Perspective */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  My Perspective
+                </label>
+                <textarea
+                  value={perspective}
+                  onChange={(e) => setPerspective(e.target.value)}
+                  placeholder="What's your take on this? Any specific angle you want to highlight?"
+                  rows={3}
+                  className="w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none"
                 />
-              </button>
-            </div>
-          </>
-        ) : isGenerating ? (
-          <AiGeneratingView step={genStep} />
-        ) : (
-          <>
-            {/* Sources */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                Sources <span className="text-red-400">*</span>
-              </label>
-              <div className="flex flex-col gap-2">
-                {sources.map((src, idx) => (
-                  <div key={idx} className="flex gap-1.5">
-                    <textarea
-                      ref={idx === 0 ? sourceRef : undefined}
-                      value={src}
-                      onChange={(e) => {
-                        const next = [...sources];
-                        next[idx] = e.target.value;
-                        setSources(next);
-                      }}
-                      placeholder={
-                        idx === 0
-                          ? "https://example.com/article  or paste text directly"
-                          : "https://... or paste text"
-                      }
-                      rows={2}
-                      className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none font-mono"
+              </div>
+
+              {/* Reference Posts */}
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Reference Posts
+                  {selectedRefs.length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] normal-case font-semibold">
+                      {selectedRefs.length}
+                    </span>
+                  )}
+                </label>
+                <div className="flex flex-col gap-1.5 border border-[var(--border)] rounded-lg overflow-hidden">
+                  <div className="px-2.5 pt-2.5">
+                    <input
+                      type="text"
+                      value={refSearch}
+                      onChange={(e) => setRefSearch(e.target.value)}
+                      placeholder="Search posts…"
+                      className="w-full h-8 px-2.5 rounded-md border border-[var(--border)] bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] transition-all"
                     />
-                    {sources.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setSources(sources.filter((_, i) => i !== idx))}
-                        className="w-7 h-7 mt-1 flex items-center justify-center rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors cursor-pointer shrink-0"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto px-1 pb-1.5">
+                    {allPosts
+                      .filter((p) => {
+                        if (refSearch === "") return true;
+                        const q = refSearch.toLowerCase();
+                        return (
+                          p.title.toLowerCase().includes(q) ||
+                          p.content.toLowerCase().includes(q)
+                        );
+                      })
+                      .slice(0, 30)
+                      .map((p) => {
+                        const checked = selectedRefs.includes(p.filepath);
+                        return (
+                          <button
+                            key={p.filepath}
+                            type="button"
+                            onClick={() => {
+                              if (checked) {
+                                setSelectedRefs(selectedRefs.filter((f) => f !== p.filepath));
+                              } else if (selectedRefs.length < 3) {
+                                setSelectedRefs([...selectedRefs, p.filepath]);
+                              }
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer ${
+                              checked
+                                ? "bg-[var(--accent-subtle)]"
+                                : selectedRefs.length >= 3
+                                ? "opacity-40 cursor-not-allowed"
+                                : "hover:bg-[var(--muted)]"
+                            }`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors ${
+                                checked
+                                  ? "bg-[var(--accent)] border-[var(--accent)]"
+                                  : "border-[var(--border)]"
+                              }`}
+                            >
+                              {checked && (
+                                <svg
+                                  className="w-2.5 h-2.5 text-white"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={3}
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-xs text-[var(--foreground)] truncate flex-1">
+                              {p.title}
+                            </span>
+                            {p.date && (
+                              <span className="text-xs text-[var(--muted-foreground)] shrink-0">
+                                {new Date(p.date).toLocaleDateString("ko-KR", {
+                                  year: "2-digit",
+                                  month: "numeric",
+                                  day: "numeric",
+                                })}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    {allPosts.filter((p) => {
+                      if (refSearch === "") return true;
+                      const q = refSearch.toLowerCase();
+                      return (
+                        p.title.toLowerCase().includes(q) ||
+                        p.content.toLowerCase().includes(q)
+                      );
+                    }).length === 0 && (
+                      <p className="text-xs text-[var(--muted-foreground)] px-2 py-2">
+                        No posts found
+                      </p>
                     )}
                   </div>
-                ))}
+                  {selectedRefs.length >= 3 && (
+                    <p className="text-xs text-[var(--muted-foreground)] px-3 pb-2">
+                      Max 3 reference posts
+                    </p>
+                  )}
+                </div>
               </div>
-              {sources.length < 5 && (
-                <button
-                  type="button"
-                  onClick={() => setSources([...sources, ""])}
-                  className="self-start flex items-center gap-1.5 text-xs text-[var(--accent)] hover:opacity-80 transition-opacity cursor-pointer mt-0.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add source
-                </button>
-              )}
-            </div>
 
-            {/* Perspective */}
+              {/* Category selector */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                  Category
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {["AI", "Blog", "Engineering", "Cloud", "Insight"].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setAiCategory(cat)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+                        aiCategory === cat
+                          ? "border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]"
+                          : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]/30"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Metadata notice */}
+              <div className="flex gap-3 text-xs text-[var(--muted-foreground)] bg-[var(--accent-subtle)] rounded-lg px-3 py-2.5">
+                <span>
+                  Tags: <span className="text-[var(--foreground)]">auto</span>
+                </span>
+                <span>·</span>
+                <span>
+                  Saved as: <span className="text-[var(--foreground)]">draft</span>
+                </span>
+              </div>
+            </>
+          )
+        ) : isOpinionGenerating ? (
+          <AiGeneratingView step={opinionGenStep} steps={OPINION_GEN_STEPS} />
+        ) : (
+          <>
+            {/* Opinion textarea */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                My Perspective
+                Opinion <span className="text-red-400">*</span>
               </label>
               <textarea
-                value={perspective}
-                onChange={(e) => setPerspective(e.target.value)}
-                placeholder="What's your take on this? Any specific angle you want to highlight?"
-                rows={3}
+                ref={opinionRef}
+                value={opinion}
+                onChange={(e) => setOpinion(e.target.value)}
+                placeholder="당신의 의견을 작성해 주세요. 최소 50자 이상 입력해야 합니다."
+                rows={6}
+                maxLength={5000}
                 className="w-full px-3 py-2.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all duration-200 resize-none"
               />
+              <div className="flex justify-between text-xs text-[var(--muted-foreground)]">
+                <span>
+                  {opinion.trim().length < 50
+                    ? `최소 50자 (현재 ${opinion.trim().length}자)`
+                    : `${opinion.trim().length}자`}
+                </span>
+                <span>{opinion.length} / 5000</span>
+              </div>
+            </div>
+
+            {/* Category selector */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+                Category
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {["AI", "Blog", "Engineering", "Cloud", "Insight"].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setOpinionCategory(cat)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+                      opinionCategory === cat
+                        ? "border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]"
+                        : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]/30"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Reference Posts */}
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
                 Reference Posts
-                {selectedRefs.length > 0 && (
+                {opinionSelectedRefs.length > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] normal-case font-semibold">
-                    {selectedRefs.length}
+                    {opinionSelectedRefs.length}
                   </span>
                 )}
               </label>
@@ -444,8 +575,8 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
                 <div className="px-2.5 pt-2.5">
                   <input
                     type="text"
-                    value={refSearch}
-                    onChange={(e) => setRefSearch(e.target.value)}
+                    value={opinionRefSearch}
+                    onChange={(e) => setOpinionRefSearch(e.target.value)}
                     placeholder="Search posts…"
                     className="w-full h-8 px-2.5 rounded-md border border-[var(--border)] bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] transition-all"
                   />
@@ -453,8 +584,8 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
                 <div className="max-h-40 overflow-y-auto px-1 pb-1.5">
                   {allPosts
                     .filter((p) => {
-                      if (refSearch === "") return true;
-                      const q = refSearch.toLowerCase();
+                      if (opinionRefSearch === "") return true;
+                      const q = opinionRefSearch.toLowerCase();
                       return (
                         p.title.toLowerCase().includes(q) ||
                         p.content.toLowerCase().includes(q)
@@ -462,22 +593,22 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
                     })
                     .slice(0, 30)
                     .map((p) => {
-                      const checked = selectedRefs.includes(p.filepath);
+                      const checked = opinionSelectedRefs.includes(p.filepath);
                       return (
                         <button
                           key={p.filepath}
                           type="button"
                           onClick={() => {
                             if (checked) {
-                              setSelectedRefs(selectedRefs.filter((f) => f !== p.filepath));
-                            } else if (selectedRefs.length < 3) {
-                              setSelectedRefs([...selectedRefs, p.filepath]);
+                              setOpinionSelectedRefs(opinionSelectedRefs.filter((f) => f !== p.filepath));
+                            } else if (opinionSelectedRefs.length < 3) {
+                              setOpinionSelectedRefs([...opinionSelectedRefs, p.filepath]);
                             }
                           }}
                           className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer ${
                             checked
                               ? "bg-[var(--accent-subtle)]"
-                              : selectedRefs.length >= 3
+                              : opinionSelectedRefs.length >= 3
                               ? "opacity-40 cursor-not-allowed"
                               : "hover:bg-[var(--muted)]"
                           }`}
@@ -521,8 +652,8 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
                       );
                     })}
                   {allPosts.filter((p) => {
-                    if (refSearch === "") return true;
-                    const q = refSearch.toLowerCase();
+                    if (opinionRefSearch === "") return true;
+                    const q = opinionRefSearch.toLowerCase();
                     return (
                       p.title.toLowerCase().includes(q) ||
                       p.content.toLowerCase().includes(q)
@@ -533,34 +664,11 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
                     </p>
                   )}
                 </div>
-                {selectedRefs.length >= 3 && (
+                {opinionSelectedRefs.length >= 3 && (
                   <p className="text-xs text-[var(--muted-foreground)] px-3 pb-2">
                     Max 3 reference posts
                   </p>
                 )}
-              </div>
-            </div>
-
-            {/* Category selector */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                Category
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {["AI", "Blog", "Engineering", "Cloud", "Insight"].map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setAiCategory(cat)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
-                      aiCategory === cat
-                        ? "border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]"
-                        : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]/30"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
               </div>
             </div>
 
