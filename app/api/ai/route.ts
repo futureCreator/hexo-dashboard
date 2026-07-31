@@ -1,4 +1,9 @@
 import { NextRequest } from "next/server";
+import {
+  getOpenRouterKey,
+  openRouterChatStream,
+  openRouterSseToTextStream,
+} from "@/lib/openrouter";
 
 type Action = "rewrite" | "expand" | "shorten" | "fix-grammar";
 
@@ -25,69 +30,28 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: "invalid action" }), { status: 400 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: "GEMINI_API_KEY not configured" }), {
+  if (!getOpenRouterKey()) {
+    return new Response(JSON.stringify({ error: "OPENROUTER_API_KEY not configured" }), {
       status: 500,
     });
   }
 
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:streamGenerateContent?key=${apiKey}&alt=sse`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `${systemPrompt}\n\nTEXT:\n${text}` }] }],
-      }),
-      signal: AbortSignal.timeout(60000),
-    }
-  );
-
-  if (!geminiRes.ok) {
-    const errText = await geminiRes.text();
-    return new Response(JSON.stringify({ error: `Gemini API error: ${errText}` }), {
-      status: 500,
-    });
-  }
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const reader = geminiRes.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const jsonStr = line.slice(6).trim();
-            if (!jsonStr || jsonStr === "[DONE]") continue;
-            try {
-              const data = JSON.parse(jsonStr);
-              const chunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (chunk) {
-                controller.enqueue(new TextEncoder().encode(chunk));
-              }
-            } catch {
-              // ignore malformed SSE chunk
-            }
-          }
-        }
-      } finally {
-        controller.close();
-      }
-    },
+  const upstream = await openRouterChatStream({
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: text },
+    ],
+    timeoutMs: 60000,
   });
 
-  return new Response(stream, {
+  if (!upstream.ok) {
+    const errText = await upstream.text();
+    return new Response(JSON.stringify({ error: `OpenRouter API error: ${errText}` }), {
+      status: 500,
+    });
+  }
+
+  return new Response(openRouterSseToTextStream(upstream), {
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
 }

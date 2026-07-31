@@ -3,6 +3,7 @@ import fs from "fs";
 import { readPosts } from "@/lib/hexo";
 import { loadSettings } from "@/lib/settings";
 import { analyzeContent } from "@/lib/content-stats";
+import { getOpenRouterKey, openRouterChat } from "@/lib/openrouter";
 
 export interface Insight {
   type: "positive" | "warning" | "info";
@@ -24,9 +25,8 @@ export async function GET() {
     return NextResponse.json({ error: "Hexo path not configured" }, { status: 400 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
+  if (!getOpenRouterKey()) {
+    return NextResponse.json({ error: "OPENROUTER_API_KEY not configured" }, { status: 500 });
   }
 
   const posts = readPosts(hexoPath).filter((p) => !p.draft && p.date);
@@ -160,29 +160,12 @@ Be specific with numbers. Use actual data values.
 Return ONLY valid JSON like: {"insights": [...]}`;
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 4096 },
-        }),
-        signal: AbortSignal.timeout(30000),
-      }
-    );
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return NextResponse.json({ error: `Gemini API error: ${errText}` }, { status: 500 });
-    }
-
-    const geminiData = await geminiRes.json();
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      return NextResponse.json({ error: "No response from Gemini" }, { status: 500 });
-    }
+    const text = await openRouterChat({
+      messages: [{ role: "user", content: prompt }],
+      json: true,
+      maxTokens: 16384,
+      timeoutMs: 60000,
+    });
 
     const parsed = JSON.parse(text) as { insights: Insight[] };
     return NextResponse.json({
