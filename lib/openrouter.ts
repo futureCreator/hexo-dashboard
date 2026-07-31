@@ -1,6 +1,6 @@
-/** OpenRouter client for GPT-5.6 Luna Max (effort: max). */
+/** OpenRouter client for Grok 4.5 (reasoning effort: high). */
 
-export const OPENROUTER_MODEL = "openai/gpt-5.6-luna";
+export const OPENROUTER_MODEL = "x-ai/grok-4.5";
 
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -31,9 +31,9 @@ export async function openRouterChat(opts: ChatOptions): Promise<string> {
     body: JSON.stringify({
       model: OPENROUTER_MODEL,
       messages: opts.messages,
-      // Luna Max = luna + reasoning effort max; exclude keeps response clean
-      reasoning: { effort: "max", exclude: true },
-      // ponytail: effort:max eats ~95% of max_tokens for reasoning — leave headroom for output
+      // exclude keeps response clean (reasoning tokens omitted from content)
+      reasoning: { effort: "high", exclude: true },
+      // ponytail: high reasoning eats most of max_tokens — leave headroom for output
       max_tokens: opts.maxTokens ?? 65536,
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),
     }),
@@ -68,7 +68,7 @@ export async function openRouterChatStream(opts: {
     body: JSON.stringify({
       model: OPENROUTER_MODEL,
       messages: opts.messages,
-      reasoning: { effort: "max", exclude: true },
+      reasoning: { effort: "high", exclude: true },
       max_tokens: opts.maxTokens ?? 8192,
       stream: true,
     }),
