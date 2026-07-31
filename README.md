@@ -1,29 +1,60 @@
 # Hexo Dashboard
 
-A local dashboard for managing Hexo blog posts and pages — built with Next.js 15, TypeScript, and Tailwind CSS v4.
+A local dashboard for managing Hexo blog posts and pages — built with Next.js 15, TypeScript, and Tailwind CSS v4. Follows Apple Human Interface Guidelines with mobile-first responsive design.
 
 ## Features
 
-- Browse published posts and drafts from your Hexo blog
+### Content Management
+- Browse published posts and drafts with real-time file watching (SSE)
+- Create, edit, and delete posts with a full-featured **CodeMirror** Markdown editor
 - Manage static pages (About, Contact, etc.) from a dedicated Pages view
-- Create new posts with title, date, tags, and categories
-- Edit post and page content and front matter directly in the browser
-- Delete posts and pages with a confirmation modal
-- Open posts in your local editor (e.g. VS Code)
+- **Drag-and-drop image upload** — drop images into the editor to auto-insert Markdown tags
+- **Post link picker** — searchable panel to insert `{% post_link %}` tags at cursor
+- **Tags management** — word cloud visualization, inline rename, and bulk delete with reference cleanup
+- Open files in your local editor (e.g. VS Code)
+
+### AI-Powered Writing
+- **AI Writing Coach** — OpenRouter (GPT-5.6 Luna Max) feedback on writing style and readability
+- **AI Write** — generate draft posts with related-post links
+- **Content Stats** — word count, reading time, readability analysis
+
+### Visualization & Analytics
+- **Contribution heatmap** — GitHub-style activity grid
+- **Link graph** — force-directed visualization of internal post links with broken-link detection
+- **Google Analytics** integration — page views, sessions, and traffic charts
+- **Google Search Console** integration — impressions, clicks, and query data
+- **Monthly bar charts** — 12-month post volume at a glance
+
+### Mobile Experience (Apple HIG)
+- **iOS-style swipe actions** — swipe left to delete, swipe right to toggle publish/draft
+- **Full-screen editor pages** (`/edit`, `/write`) for immersive mobile editing
+- **Markdown accessory bar** with keyboard height detection
+- **Bottom tab bar** navigation with Thumb Zone-optimized layout
+- **FAB** for quick post creation
+- Streak card, quick action hub, and recent drafts on mobile home
+
+### DevOps
 - Commit changes to git with a built-in staging UI
-- Deploy your blog with a single click (`hexo deploy`)
-- Live file-watching via SSE — post list updates automatically when files change
-- Contribution heatmap — visualize your post activity at a glance
-- Dark / Light / System theme with no flash on load
-- Configure your Hexo project path via the Settings page
+- Clean Hexo cache and deploy with a single click
+- Live file-watching via SSE — post list updates automatically
+- Dark / Light theme auto-follows system preference (OLED-optimized dark mode)
 
 ## Tech Stack
 
-- **Next.js 15** (App Router)
-- **TypeScript**
-- **Tailwind CSS v4**
-- **Framer Motion**
-- **gray-matter** — parses Markdown front matter
+| Category | Technology |
+|----------|------------|
+| Framework | **Next.js 15** (App Router), **React 19** |
+| Language | **TypeScript 5** |
+| Styling | **Tailwind CSS v4**, CSS custom properties (Apple HIG tokens) |
+| Animation | **Framer Motion** |
+| Editor | **CodeMirror** (`@uiw/react-codemirror`) |
+| Markdown | **gray-matter** (front matter parsing) |
+| Charts | **Recharts** |
+| Visualization | **react-force-graph-2d** (link graph), **react-d3-cloud** (tag cloud) |
+| Analytics | **Google Analytics Data API**, **Google Search Console API** |
+| AI | **OpenRouter** (`openai/gpt-5.6-luna`, reasoning effort `max`) |
+| Fonts | **Pretendard** (sans), **Calistoga** (display), **JetBrains Mono** (code) |
+| Process Manager | **PM2** (`ecosystem.config.js`) |
 
 ## Getting Started
 
@@ -34,97 +65,136 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+### Production Deployment
+
+```bash
+npm run deploy   # Builds with basePath and restarts PM2
+```
+
+Runs on `localhost:4000` behind a reverse proxy at `/proxy/hexo`.
+
 ## Configuration
 
 On first run, go to **Settings** and set the path to your Hexo project directory. The config is saved to `~/.hexo-dashboard-config.json`.
 
+### Environment Variables
+
+| File | Variable | Description |
+|------|----------|-------------|
+| `.env.local` | `OPENROUTER_API_KEY` | OpenRouter API key for AI features |
+| `.env.local` | `FIRECRAWL_API_KEY` | Firecrawl API key for source-URL scraping |
+| `.env.local` | `PERPLEXITY_API_KEY` | Perplexity API key for AI writing research (`sonar`) |
+| `.env.production` | `NEXT_PUBLIC_BASE_PATH` | Base path for reverse proxy (default: `/proxy/hexo`) |
+
+## Project Structure
+
+```
+app/
+├── (dashboard)/          # Sidebar layout — Home, Posts, Pages, Tags, Links, Media, Analytics, Settings
+├── (fullscreen)/         # No sidebar — /write, /edit (mobile-optimized)
+├── api/                  # 21 API routes
+├── globals.css           # Apple HIG design tokens
+└── layout.tsx            # Root layout with fonts & providers
+
+components/
+├── editor/               # MarkdownAccessoryBar, useKeyboardHeight
+├── home/                 # StreakCard, QuickActions, RecentDrafts, WritingCoachCard, MonthlyBarChart
+├── layout/               # Sidebar, DashboardLayout, DarkBackground
+├── links/                # ForceGraphView
+├── pages/                # PageList, PageCard, NewPageModal
+├── posts/                # PostList, PostCard, PostEditor, WriteForm, EditModal, CodeEditor, ContributionHeatmap
+├── providers/            # ThemeProvider
+├── tags/                 # TagsClient
+└── ui/                   # Button, Card, Badge, SectionLabel, Skeleton, Toast
+
+hooks/                    # useMediaQuery, useCommit, useClean, useDeploy
+lib/                      # hexo.ts, settings.ts, api.ts, analytics.ts, search-console.ts, link-graph.ts, content-stats.ts, streak.ts
+```
+
 ## API Routes
+
+### Content Management
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET/POST | `/api/settings` | Read and write dashboard settings |
-| GET/DELETE/POST | `/api/posts` | List, delete, and create posts |
+| GET/POST/DELETE | `/api/posts` | List, create, and delete posts |
 | GET/PUT | `/api/posts/content` | Read and write post file content |
-| GET/DELETE/POST | `/api/pages` | List, delete, and create static pages |
+| GET/POST/DELETE | `/api/pages` | List, create, and delete static pages |
 | GET/PUT | `/api/pages/content` | Read and write page file content |
-| POST | `/api/deploy` | Run `hexo deploy` |
+| GET/PATCH/DELETE | `/api/tags` | List, rename, and delete tags |
+| GET | `/api/links` | Build internal link graph |
+| GET/POST | `/api/media` | List media files |
+| POST | `/api/media/upload` | Upload image files |
+| GET | `/api/media/file/[...filepath]` | Serve media files |
+
+### AI & Analytics
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/api/ai-write` | AI-powered post generation (OpenRouter) |
+| GET | `/api/ai-writing-coach` | AI writing feedback |
+| POST | `/api/ai` | General AI endpoint |
+| GET | `/api/content-stats` | Content readability and statistics |
+| GET | `/api/analytics` | Google Analytics data |
+| GET | `/api/search-console` | Google Search Console data |
+
+### DevOps & Utilities
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/api/deploy` | Run `hexo generate && hexo deploy` |
+| POST | `/api/clean` | Clean Hexo cache |
 | POST | `/api/git/commit` | Stage and commit changes via git |
 | POST | `/api/open` | Open a file in the local editor |
+| GET/POST | `/api/settings` | Read and write dashboard settings |
 | GET | `/api/watch` | SSE stream for file-system changes |
 
 ## Changelog
 
-### v1.0.0 - 2026-03-17
-- **Mobile-first Posts page redesign** — fully reworked layout for mobile with Apple HIG compliance
-- Added **iOS-style swipe actions** on post cards — swipe left to delete, swipe right to toggle publish/draft; includes rubber-band physics, auto-close on scroll, and single-card-open enforcement
-- Added **FAB (Floating Action Button)** for new post creation on mobile — positioned above bottom tab bar with spring animation
-- Added **chevron indicators** on mobile post rows for navigation affordance
-- Hidden desktop-only controls on mobile: Clean/Commit/Deploy buttons, date range filter, live indicator
-- Added full-screen mobile editor routing — tapping a post navigates to `/edit?path=...` instead of opening a modal
-- Added **mobile home components**: streak card, quick action hub, recent drafts
-- Added **full-screen `/write` page** for mobile new post creation
-- Added **Markdown accessory bar** with keyboard height detection for mobile editing
-- Extracted `PostEditor` from `EditModal` and `WriteForm` from `NewPostModal` for code reuse
-- Reorganized routes into `(dashboard)` and `(fullscreen)` route groups
-- Extracted `useClean`, `useCommit`, `useDeploy` action hooks from button components
-- Added `useMediaQuery` and `useIsMobile` hooks
-- Added Pretendard variable font for Korean typography
-- Fixed `.env.production` basePath configuration
+### v1.0.0 — 2026-03-17
+- **Mobile-first Posts page redesign** with Apple HIG compliance
+- iOS-style swipe actions, FAB, chevron indicators, bottom tab bar
+- Full-screen `/edit` and `/write` pages for mobile
+- Markdown accessory bar with keyboard height detection
+- Mobile home components: streak card, quick action hub, recent drafts
+- Route groups: `(dashboard)` and `(fullscreen)`
+- Extracted reusable hooks: `useClean`, `useCommit`, `useDeploy`, `useMediaQuery`
+- Pretendard variable font for Korean typography
 
-### v0.1.19 - 2026-03-12
-- Localized **AI Writing Coach** card UI strings from Korean to English (`WritingCoachCard`)
-- Fixed `{% post_link %}` slug generation in `EditModal` — strips date prefix (e.g. `20260101-`) from filenames so generated tags resolve correctly
-- Added `.claude` to `.gitignore`
+### v0.1.19 — 2026-03-12
+- Localized AI Writing Coach card UI to English
+- Fixed `{% post_link %}` slug generation (strips date prefix)
 
-### v0.1.18 - 2026-03-09
-- Added **Tags** page (`/tags`) — word cloud visualization (`react-d3-cloud`) with sortable tag list, inline rename, and delete (removes `{% post_link %}` references across posts); added `/api/tags` GET/PATCH/DELETE endpoint and **Tags** nav item in sidebar
-- Added `findPostLinkReferences`, `cleanPostLinkReferences`, and `updateTagInPosts` helpers to `lib/hexo.ts`
-- Redesigned **design tokens** in `globals.css` to follow Apple Human Interface Guidelines — iOS system-grouped backgrounds, label hierarchy, system fills, opaque separators, and semantic colors (success, warning, error) for both light and dark appearances; dark mode now uses true black (`#000000`) optimised for OLED
-- Redesigned **DashboardLayout** with an iOS-style page title header and a responsive bottom tab bar for mobile navigation
-- Refactored **Sidebar** for a more compact, native-feeling look
-- Simplified **Posts** page header (removed redundant action buttons from header row; actions remain in post cards)
-- Refactored **Settings** page into `SectionHeader` / `FormGroup` / `FormRow` sub-components for improved readability
+### v0.1.18 — 2026-03-09
+- Tags page with word cloud, inline rename, and delete
+- Apple HIG design tokens overhaul (OLED-optimized dark mode)
+- iOS-style page title header and bottom tab bar
 
-### v0.1.17 - 2026-03-08
-- Added **Links** page (`/links`) — interactive force-graph visualization of internal post links (`{% post_link %}` and Markdown links), including broken-link detection; added `react-force-graph-2d` dependency and **Links** nav item in sidebar
-- Added **post link picker** in `EditModal` — toolbar button opens a searchable panel to insert `{% post_link slug "Title" %}` tags at cursor; replaced the previous AIToolbar
-- Added in-memory **posts cache** in `lib/hexo.ts` with `invalidatePostsCache()` — called on file-watch events and all mutating API routes (create/delete/update/content write) to avoid re-scanning disk on every read
-- AI Write route now generates related-post links using `{% post_link %}` tags instead of absolute URLs
-- Added `slug` field to `HexoPost` interface; used when resolving post links in the link graph
+### v0.1.17 — 2026-03-08
+- Links page with force-graph visualization and broken-link detection
+- Post link picker in editor
+- In-memory posts cache with invalidation
 
-### v0.1.16 - 2026-03-07
-- Replaced plain `<textarea>` in `EditModal` with a **CodeMirror** editor (`CodeEditor` component) — syntax highlighting, proper Tab handling, and CodeMirror selection API for AI toolbar
-- Added **drag-and-drop image upload** in the editor — drop an image to upload via `/api/media/upload` and auto-insert the Markdown image tag
-- Added **Media** page and `/media` nav item for browsing uploaded images
-- Added **콘텐츠 통계** (Content Stats) tab in Analytics — total posts/words/reading time, avg word count, monthly avg word length bar chart, and monthly detail table
-- Added **AI Writing Coach** card on the Home dashboard
-- AI Write API now appends a **related posts** section (tag + title scored) to generated content
-- Added `n`/`N` keyboard shortcut on Posts page to open the New Post modal
-- Extended New Post reference-post search to match post **content** in addition to title
-- Changed default UI font from Inter to **Noto Sans KR**
-- Removed PWA support (`@ducanh2912/next-pwa`) and `app/manifest.ts`
+### v0.1.16 — 2026-03-07
+- CodeMirror editor with syntax highlighting
+- Drag-and-drop image upload
+- Media page, Content Stats tab, AI Writing Coach
+- Keyboard shortcut `n`/`N` for new post
 
-### v0.1.15 - 2026-03-07
-- Increased recent posts display on Home dashboard from 6 to 8
+### v0.1.15 — 2026-03-07
+- Increased recent posts on Home from 6 to 8
 
-### v0.1.14 - 2026-03-07
-- Enhanced **Home dashboard** with top categories, top tags, and 12-month activity charts
-- Added `HomeNewPostButton` and `MonthlyBarChart` components for better home page organization
-- Refactored `ContributionHeatmap` component for improved maintainability
+### v0.1.14 — 2026-03-07
+- Home dashboard: top categories, top tags, 12-month activity charts
 
-### v0.1.13 - 2026-03-07
-- Extended analytics period selector from 2 options (7/30 days) to 4 options: **7, 14, 30, 90 days** — for both Google Analytics and Search Console tabs
-- API routes now accept all four period values with proper validation (falls back to 7 days for unknown values)
-- Simplified chart section headings (removed redundant "last N days" suffix)
+### v0.1.13 — 2026-03-07
+- Analytics period selector: 7, 14, 30, 90 days
 
-### v0.1.12 - 2026-03-07
-- Added **Home dashboard** — overview page with stat cards (total, published, drafts, written today), recent posts list, quick action links, and site info (URL, last generated, most recent post)
-- Added **Home** nav item to sidebar with house icon; fixed active-state detection for root route
+### v0.1.12 — 2026-03-07
+- Home dashboard with stat cards, recent posts, site info
 
 ### v0.1.1
-- Added **Pages** management — create, edit, and delete static Hexo pages (`source/<slug>/index.md`)
-- Added **Contribution Heatmap** — GitHub-style activity heatmap on the Posts page
-- `EditModal` now accepts a `contentApiBase` prop so it can be reused for both posts and pages
+- Pages management, Contribution Heatmap
 
 ### v0.1.0
-- Initial release: post browsing, editing, dark mode, git commit UI, deploy button, file watcher
+- Initial release: post browsing, editing, dark mode, git commit UI, deploy, file watcher

@@ -32,14 +32,14 @@ interface WriteFormProps {
 // ─── Constants & helpers ───────────────────────────────────────────────────────
 
 const GEN_STEPS = [
-  { label: "Fetching sources", detail: "Reading articles and URLs in parallel…" },
-  { label: "Analyzing content", detail: "Understanding key points and context…" },
-  { label: "Writing post", detail: "Composing your blog post with AI…" },
-  { label: "Saving draft", detail: "Almost done, wrapping up…" },
+  { label: "소스 가져오는 중", detail: "URL과 텍스트를 읽고 있습니다…" },
+  { label: "관련 자료 검색 중", detail: "웹에서 객관적 자료를 찾고 있습니다…" },
+  { label: "글 작성 중", detail: "소스와 자료를 합쳐 글을 작성하고 있습니다…" },
+  { label: "저장 중", detail: "거의 다 됐습니다…" },
 ];
 
 const OPINION_GEN_STEPS = [
-  { label: "관련 자료 검색 중", detail: "Perplexity로 객관적 자료를 찾고 있습니다…" },
+  { label: "관련 자료 검색 중", detail: "웹에서 관련 자료를 찾고 있습니다…" },
   { label: "자료 분석 중", detail: "수집한 자료를 분석하고 있습니다…" },
   { label: "글 작성 중", detail: "의견과 자료를 합쳐 글을 작성하고 있습니다…" },
   { label: "저장 중", detail: "거의 다 됐습니다…" },
@@ -190,11 +190,12 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
     setIsGenerating(true);
     setGenStep(0);
 
-    const stepTimers = [
-      setTimeout(() => setGenStep(1), 2500),
-      setTimeout(() => setGenStep(2), 6000),
-      setTimeout(() => setGenStep(3), 11000),
-    ];
+    const stepFromJob = (step?: string) => {
+      if (step === "fetch") setGenStep(0);
+      else if (step === "search") setGenStep(1);
+      else if (step === "write") setGenStep(2);
+      else if (step === "save") setGenStep(3);
+    };
 
     try {
       const res = await fetch(apiUrl("/api/ai-write"), {
@@ -207,17 +208,36 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
           referencePosts: selectedRefs,
         }),
       });
-      const data = await res.json();
+      const start = await res.json();
       if (!res.ok) {
-        showToast({ type: "error", message: data.error || "Failed to generate post" });
+        showToast({ type: "error", message: start.error || "Failed to generate post" });
         return;
       }
-      showToast({ type: "success", message: `"${data.post.title}" generated and saved as draft` });
-      onCreated(data.post);
+
+      // Poll short requests — long OpenRouter waits were getting killed by reverse proxies
+      const jobId = start.jobId as string;
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const poll = await fetch(apiUrl(`/api/ai-write?jobId=${encodeURIComponent(jobId)}`));
+        const job = await poll.json();
+        if (!poll.ok) {
+          showToast({ type: "error", message: job.error || "Job poll failed" });
+          return;
+        }
+        stepFromJob(job.step);
+        if (job.status === "done") {
+          showToast({ type: "success", message: `"${job.post.title}" 생성 완료, 드래프트로 저장됨` });
+          onCreated(job.post);
+          return;
+        }
+        if (job.status === "error") {
+          showToast({ type: "error", message: job.error || "Failed to generate post" });
+          return;
+        }
+      }
     } catch (err) {
       showToast({ type: "error", message: String(err) });
     } finally {
-      stepTimers.forEach(clearTimeout);
       setIsGenerating(false);
       setGenStep(0);
     }
@@ -228,10 +248,12 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
     setIsOpinionGenerating(true);
     setOpinionGenStep(0);
 
-    const stepTimers = [
-      setTimeout(() => setOpinionGenStep(1), 5000),
-      setTimeout(() => setOpinionGenStep(2), 10000),
-    ];
+    const stepFromJob = (step?: string) => {
+      if (step === "search") setOpinionGenStep(0);
+      else if (step === "analyze") setOpinionGenStep(1);
+      else if (step === "write") setOpinionGenStep(2);
+      else if (step === "save") setOpinionGenStep(3);
+    };
 
     try {
       const res = await fetch(apiUrl("/api/ai-write-opinion"), {
@@ -243,18 +265,36 @@ const WriteForm = forwardRef<WriteFormHandle, WriteFormProps>(function WriteForm
           referencePosts: opinionSelectedRefs,
         }),
       });
-      const data = await res.json();
+      const start = await res.json();
       if (!res.ok) {
-        showToast({ type: "error", message: data.error || "Failed to generate post" });
+        showToast({ type: "error", message: start.error || "Failed to generate post" });
         return;
       }
-      setOpinionGenStep(3); // "저장 중" — triggered on API response, not timer
-      showToast({ type: "success", message: `"${data.post.title}" 생성 완료, 드래프트로 저장됨` });
-      onCreated(data.post);
+
+      // Poll short requests — long OpenRouter waits were getting killed by reverse proxies
+      const jobId = start.jobId as string;
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const poll = await fetch(apiUrl(`/api/ai-write-opinion?jobId=${encodeURIComponent(jobId)}`));
+        const job = await poll.json();
+        if (!poll.ok) {
+          showToast({ type: "error", message: job.error || "Job poll failed" });
+          return;
+        }
+        stepFromJob(job.step);
+        if (job.status === "done") {
+          showToast({ type: "success", message: `"${job.post.title}" 생성 완료, 드래프트로 저장됨` });
+          onCreated(job.post);
+          return;
+        }
+        if (job.status === "error") {
+          showToast({ type: "error", message: job.error || "Failed to generate post" });
+          return;
+        }
+      }
     } catch (err) {
       showToast({ type: "error", message: String(err) });
     } finally {
-      stepTimers.forEach(clearTimeout);
       setIsOpinionGenerating(false);
       setOpinionGenStep(0);
     }
